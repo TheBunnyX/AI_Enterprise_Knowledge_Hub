@@ -1,0 +1,192 @@
+name: ai-knowledge-hub
+x-api-env: &api-env
+  # The app runs as the unprivileged hub_app role so PostgreSQL row-level security applies; the owner role runs migrations and backups.
+  DATABASE_URL: postgresql+psycopg://hub_app:${POSTGRES_PASSWORD:?Run scripts/setup-env.ps1 first}@postgres:5432/hub
+  MIGRATION_DATABASE_URL: postgresql+psycopg://hub:${POSTGRES_PASSWORD}@postgres:5432/hub
+  DATA_DIR: /data
+  DEMO_ACCOUNTS: ${DEMO_ACCOUNTS:-}
+  SEED_SAMPLE_DATA: ${SEED_SAMPLE_DATA:-false}
+  WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3009}
+  VOICE_LANGUAGES: ${VOICE_LANGUAGES:-th,en}
+  TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-1}
+  S3_ENDPOINT: http://seaweedfs:8333
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:?Run scripts/setup-env.ps1 first}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:?Run scripts/setup-env.ps1 first}
+  S3_BUCKET: knowledge
+  QDRANT_URL: http://qdrant:6333
+  CELERY_BROKER_URL: redis://redis:6379/0
+  LITELLM_URL: ${LITELLM_URL:-}
+  LITELLM_KEY: ${LITELLM_KEY:-}
+  SECRETS_KEY: ${SECRETS_KEY:-}
+  GOOGLE_AI_API_KEY: ${GOOGLE_AI_API_KEY:-}
+  OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+  MEDIA_DOWNLOAD_HOSTS: ${MEDIA_DOWNLOAD_HOSTS:-}
+  EMBEDDING_MODEL: ${EMBEDDING_MODEL:-}
+  EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-1536}
+  EMBEDDING_VERSION: ${EMBEDDING_VERSION:-1}
+  EMBEDDING_MAX_TOKENS: ${EMBEDDING_MAX_TOKENS:-0}
+  EMBEDDING_BATCH_SIZE: ${EMBEDDING_BATCH_SIZE:-32}
+  RERANK_MODEL: ${RERANK_MODEL:-}
+  RERANK_MIN_SCORE: ${RERANK_MIN_SCORE:-0}
+  OCR_LANGUAGES: ${OCR_LANGUAGES:-tha+eng}
+  CHAT_ATTACHMENT_CHARS: ${CHAT_ATTACHMENT_CHARS:-12000}
+  CHAT_ATTACHMENT_HOURS: ${CHAT_ATTACHMENT_HOURS:-24}
+  AGENT_MAX_TOKENS: ${AGENT_MAX_TOKENS:-60000}
+  LOCAL_LLM_URL: ${LOCAL_LLM_URL:-http://llm-local:8080/v1}
+  CLAMAV_HOST: clamav
+  CLAMAV_PORT: '3310'
+  CLAMAV_REQUIRED: 'true'
+  BACKUP_DIR: /backups
+  BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-24}
+  BACKUP_RETENTION: ${BACKUP_RETENTION:-7}
+  BACKUP_ENCRYPTION_KEY: ${BACKUP_ENCRYPTION_KEY:-}
+  BACKUP_REMOTE_ENDPOINT: ${BACKUP_REMOTE_ENDPOINT:-}
+  BACKUP_REMOTE_BUCKET: ${BACKUP_REMOTE_BUCKET:-}
+  BACKUP_REMOTE_ACCESS_KEY: ${BACKUP_REMOTE_ACCESS_KEY:-}
+  BACKUP_REMOTE_SECRET_KEY: ${BACKUP_REMOTE_SECRET_KEY:-}
+  BACKUP_REMOTE_REGION: ${BACKUP_REMOTE_REGION:-us-east-1}
+  BACKUP_REMOTE_PREFIX: ${BACKUP_REMOTE_PREFIX:-ai-knowledge-hub/}
+  BACKUP_REMOTE_RETENTION: ${BACKUP_REMOTE_RETENTION:-30}
+services:
+  web:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/web.Dockerfile
+    ports: ['127.0.0.1:3009:3000']
+    environment:
+      API_INTERNAL_URL: http://api:8000
+      WEB_BEHIND_PROXY: ${WEB_BEHIND_PROXY:-0}
+    depends_on:
+      api: {condition: service_healthy}
+    healthcheck:
+      test: ['CMD','node','-e','fetch("http://127.0.0.1:3000").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))']
+      interval: 20s
+      timeout: 5s
+      start_period: 60s
+    restart: unless-stopped
+  api:
+    image: ai-knowledge-hub-api:latest
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api.Dockerfile
+    environment: *api-env
+    volumes: [api-data:/data, backups-data:/backups]
+    ports: ['127.0.0.1:8100:8000']
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      qdrant: {condition: service_started}
+      seaweedfs: {condition: service_started}
+    healthcheck:
+      test: ['CMD','python','-c','import urllib.request; urllib.request.urlopen("http://127.0.0.1:8000/api/health")']
+      interval: 15s
+      timeout: 5s
+      start_period: 120s
+    restart: unless-stopped
+  worker:
+    image: ai-knowledge-hub-api:latest
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api.Dockerfile
+    command: ['celery','-A','hub.tasks.celery','worker','--loglevel=info','--concurrency=2']
+    environment: *api-env
+    volumes: [api-data:/data, backups-data:/backups]
+    depends_on:
+      api: {condition: service_healthy}
+    healthcheck:
+      test: ['CMD','celery','-A','hub.tasks.celery','inspect','ping','--timeout','5']
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+    restart: unless-stopped
+  scheduler:
+    image: ai-knowledge-hub-api:latest
+    command: ['celery','-A','hub.tasks.celery','beat','--loglevel=info','--schedule=/data/celerybeat-schedule']
+    environment: *api-env
+    volumes: [api-data:/data, backups-data:/backups]
+    depends_on:
+      api: {condition: service_healthy}
+    restart: unless-stopped
+  ops-worker:
+    image: ai-knowledge-hub-api:latest
+    command: ['celery','-A','hub.tasks.celery','worker','-Q','ops','--hostname=ops@%h','--loglevel=info','--concurrency=1']
+    environment: *api-env
+    volumes: [api-data:/data, backups-data:/backups]
+    depends_on:
+      api: {condition: service_healthy}
+    restart: unless-stopped
+  # Local LLM: Qwen3.5-2B Q4_K_M on llama.cpp (CPU, OpenAI-compatible). First start downloads ~1.3 GB into the gguf volume.
+  # Sampling follows Qwen's non-thinking recommendation; llama.cpp's defaults (temp 0.8, top-k 40) made the 2B model miss simple arithmetic.
+  llm-local:
+    profiles: [llm-local]
+    image: ghcr.io/ggml-org/llama.cpp:server
+    entrypoint: ['/bin/sh','-ec']
+    command:
+      - >-
+        cd /models;
+        f=Qwen3.5-2B-Q4_K_M.gguf;
+        [ -s "$${f}.ok" ] || { curl -fSL --retry 5 -C - -o "$$f" "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/$$f" && echo ok > "$${f}.ok"; };
+        export LD_LIBRARY_PATH=/app; exec /app/llama-server -m "$$f" --alias qwen3.5-2b --host 0.0.0.0 --port 8080 -t $${LLM_LOCAL_THREADS:-4} -c $${LLM_LOCAL_CONTEXT:-8192} --parallel 1 --reasoning-budget 0 --temp 0.7 --top-p 0.8 --top-k 20 --min-p 0
+    environment:
+      LLM_LOCAL_THREADS: ${LLM_LOCAL_THREADS:-4}
+      LLM_LOCAL_CONTEXT: ${LLM_LOCAL_CONTEXT:-8192}
+    volumes: [gguf:/models]
+    ports: ['127.0.0.1:8202:8080']
+    healthcheck:
+      test: ['CMD','curl','-fs','http://127.0.0.1:8080/health']
+      interval: 20s
+      timeout: 5s
+      start_period: 600s
+    restart: unless-stopped
+  clamav:
+    image: clamav/clamav:1.4.3
+    volumes: [clamav-data:/var/lib/clamav]
+    restart: unless-stopped
+  postgres:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_USER: hub
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: hub
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ['CMD-SHELL','pg_isready -U hub -d hub']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+  redis:
+    image: redis:7.4.6-alpine
+    command: ['redis-server','--appendonly','yes']
+    volumes: [redis-data:/data]
+    healthcheck:
+      test: ['CMD','redis-cli','ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+  qdrant:
+    image: qdrant/qdrant:v1.15.5
+    volumes: [qdrant-data:/qdrant/storage]
+    restart: unless-stopped
+  seaweedfs:
+    image: chrislusf/seaweedfs:3.97
+    entrypoint: ['/bin/sh','-ec']
+    command:
+      - >-
+        printf '{"identities":[{"name":"hub","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin","Read","Write","List","Tagging"]}]}' "$${S3_ACCESS_KEY}" "$${S3_SECRET_KEY}" > /tmp/s3.json;
+        exec weed server -dir=/data -s3 -s3.port=8333 -s3.config=/tmp/s3.json -volume.max=0 -master.volumeSizeLimitMB=1024
+    environment:
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+    volumes: [seaweed-data:/data]
+    restart: unless-stopped
+volumes:
+  api-data:
+  postgres-data:
+  redis-data:
+  qdrant-data:
+  seaweed-data:
+  backups-data:
+  clamav-data:
+  gguf:

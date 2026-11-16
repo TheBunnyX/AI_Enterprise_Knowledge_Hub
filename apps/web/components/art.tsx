@@ -1,0 +1,2 @@
+import { tr } from '../lib/i18n';
+export function AssistantArt(){return <div className="assistant-art" aria-hidden="true"><div className="orbit one"/><div className="orbit two"/><div className="floating-doc"><span/><span/><span/></div><div className="bot"><div className="bot-ear left"/><div className="bot-ear right"/><div className="bot-face"><i/><i/><b/></div><div className="bot-body"/></div><div className="idea">✦</div><div className="bot-bubble">{tr('ความรู้ขององค์กร')}<br/><strong>{tr('พร้อมให้คุณค้นพบ')}</strong></div></div>}

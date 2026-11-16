@@ -1,0 +1,17 @@
+# Development override: lets tools on this machine (tests, the evaluation, `uvicorn` run from the venv) reach the Compose database.
+#   docker compose -f compose.yaml -f compose.dev.yaml up -d postgres
+# Never combine with compose.prod.yaml: the database must not be reachable from the host in production.
+services:
+  postgres:
+    ports: ['127.0.0.1:5432:5432']
+  # `make dev` (docker compose watch): rebuild the image and restart the service whenever its source changes.
+  web:
+    develop:
+      watch:
+        - {action: rebuild, path: ./apps/web, ignore: [node_modules/, .next/, tests/, '*.tsbuildinfo']}
+  api:
+    develop:
+      watch:
+        - {action: rebuild, path: ./apps/api/hub}
+        - {action: rebuild, path: ./apps/api/migrations}
+        - {action: rebuild, path: ./apps/api/requirements.txt}

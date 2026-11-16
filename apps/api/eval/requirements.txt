@@ -1,0 +1,3 @@
+# Extra packages for eval.answers only (Ragas judge). Not part of the app image: pip install -r eval/requirements.txt
+ragas==0.4.3
+langchain-openai==1.7.4

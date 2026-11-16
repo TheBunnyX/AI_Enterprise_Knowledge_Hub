@@ -1,0 +1,17 @@
+# Production-oriented baseline. Put behind HTTPS ingress; read docs/limitations.md.
+services:
+  web:
+    ports: !override ['127.0.0.1:3009:3000']
+    environment:
+      WEB_BEHIND_PROXY: ${WEB_BEHIND_PROXY:-1}  # the HTTPS ingress sets X-Forwarded-For
+  api:
+    ports: !reset []
+    environment:
+      APP_ENV: production
+      DEMO_ACCOUNTS: ''  # demo sign-in buttons publish passwords; never in production
+      SEED_SAMPLE_DATA: 'false'
+      WEB_ORIGIN: ${WEB_ORIGIN:?Set HTTPS WEB_ORIGIN}
+      TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-2}
+  worker:
+    environment:
+      APP_ENV: production
