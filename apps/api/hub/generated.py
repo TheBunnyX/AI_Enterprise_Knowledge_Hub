@@ -206,8 +206,8 @@ def build_pdf(args):
     from reportlab.platypus import SimpleDocTemplate,Paragraph,Spacer,Table,TableStyle
     from xml.sax.saxutils import escape
     title,secs=_sections(args)
-    for name,file in (('Sarabun','Sarabun-Regular.ttf'),('Sarabun-Bold','Sarabun-Bold.ttf')):
-        if name not in pdfmetrics.getRegisteredFontNames():pdfmetrics.registerFont(TTFont(name,str(FONT_DIR/file)))
+    from .thai_pdf import register_fonts,sink
+    register_fonts()
     body=ParagraphStyle('b',fontName='Sarabun',fontSize=12,leading=19,spaceAfter=6)
     h1=ParagraphStyle('h',parent=body,fontName='Sarabun-Bold',fontSize=16,leading=24,spaceBefore=10,textColor=colors.HexColor('#1d4ed8'))
     ttl=ParagraphStyle('t',parent=body,fontName='Sarabun-Bold',fontSize=24,leading=34,spaceAfter=14)
@@ -215,7 +215,7 @@ def build_pdf(args):
     page_w=A4[0]-4*cm
     def para(text,style,width,indent=0):
         lines=wrap_lines(text,width-indent,lambda t:pdfmetrics.stringWidth(t,style.fontName,style.fontSize))
-        return Paragraph('<br/>'.join(escape(l) for l in lines),style)
+        return Paragraph('<br/>'.join(escape(sink(l)) for l in lines),style)
     story=[]
     if title:story.append(para(title,ttl,page_w))
     for sec in secs:
