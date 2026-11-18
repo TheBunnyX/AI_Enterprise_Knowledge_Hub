@@ -42,6 +42,8 @@ async def lifespan(app):
         monitor=asyncio.create_task(monitor_services())
     try:yield
     finally:
+        from . import tracing
+        await asyncio.to_thread(tracing.shutdown)  # send traces still buffered for Langfuse
         if monitor:
             monitor.cancel()
             try:await monitor

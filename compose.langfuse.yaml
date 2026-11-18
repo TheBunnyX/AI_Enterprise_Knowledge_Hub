@@ -1,0 +1,74 @@
+# Self-hosted Langfuse (LLM observability: traces, costs, scores). Optional and separate from the app, so questions and answers stay on this machine.
+#
+#   docker compose -f compose.yaml -f compose.langfuse.yaml up -d
+#
+# UI: http://localhost:3100 (first user and API keys come from the LANGFUSE_INIT_* values in .env, see scripts/setup-langfuse.sh).
+# Event storage reuses the app's SeaweedFS. Needs about 2 GB of RAM on top of the app; give Docker Desktop 8 GB or more. Set LANGFUSE_HOST=http://langfuse-web:3000 in .env for the API.
+x-langfuse-env: &langfuse-env
+  DATABASE_URL: postgresql://langfuse:${LANGFUSE_DB_PASSWORD:?Run scripts/setup-langfuse.sh first}@langfuse-db:5432/langfuse
+  SALT: ${LANGFUSE_SALT:?}
+  ENCRYPTION_KEY: ${LANGFUSE_ENCRYPTION_KEY:?}  # 64 hex characters
+  TELEMETRY_ENABLED: 'false'
+  LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: 'false'
+  CLICKHOUSE_MIGRATION_URL: clickhouse://langfuse-clickhouse:9000
+  CLICKHOUSE_URL: http://langfuse-clickhouse:8123
+  CLICKHOUSE_USER: langfuse
+  CLICKHOUSE_PASSWORD: ${LANGFUSE_CLICKHOUSE_PASSWORD:?}
+  CLICKHOUSE_CLUSTER_ENABLED: 'false'
+  REDIS_HOST: langfuse-redis
+  REDIS_PORT: '6379'
+  REDIS_AUTH: ${LANGFUSE_REDIS_PASSWORD:?}
+  LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+  LANGFUSE_S3_EVENT_UPLOAD_REGION: us-east-1
+  # Event storage reuses the app's SeaweedFS (S3); the bucket is created by scripts/setup-langfuse.sh.
+  LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: ${S3_ACCESS_KEY:?}
+  LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:?}
+  LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://seaweedfs:8333
+  LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: 'true'
+  LANGFUSE_S3_EVENT_UPLOAD_PREFIX: events/
+services:
+  langfuse-web:
+    image: langfuse/langfuse:3
+    restart: unless-stopped
+    depends_on: [langfuse-db, langfuse-clickhouse, langfuse-redis, seaweedfs]
+    ports: ['127.0.0.1:3100:3000']
+    environment:
+      <<: *langfuse-env
+      NEXTAUTH_URL: http://localhost:3100
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:?}
+      LANGFUSE_INIT_ORG_ID: hub
+      LANGFUSE_INIT_ORG_NAME: AI Knowledge Hub
+      LANGFUSE_INIT_PROJECT_ID: hub
+      LANGFUSE_INIT_PROJECT_NAME: hub
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:?}
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_SECRET_KEY:?}
+      LANGFUSE_INIT_USER_EMAIL: ${LANGFUSE_INIT_USER_EMAIL:-admin@langfuse.local}
+      LANGFUSE_INIT_USER_NAME: Admin
+      LANGFUSE_INIT_USER_PASSWORD: ${LANGFUSE_INIT_USER_PASSWORD:?}
+      AUTH_DISABLE_SIGNUP: 'true'
+  langfuse-worker:
+    image: langfuse/langfuse-worker:3
+    restart: unless-stopped
+    depends_on: [langfuse-db, langfuse-clickhouse, langfuse-redis, seaweedfs]
+    environment: *langfuse-env
+  langfuse-db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment: {POSTGRES_USER: langfuse, POSTGRES_PASSWORD: '${LANGFUSE_DB_PASSWORD}', POSTGRES_DB: langfuse}
+    volumes: [langfuse-db-data:/var/lib/postgresql/data]
+    healthcheck: {test: ['CMD-SHELL', 'pg_isready -U langfuse'], interval: 5s, timeout: 5s, retries: 10}
+  langfuse-clickhouse:
+    image: clickhouse/clickhouse-server:24.12
+    restart: unless-stopped
+    user: '101:101'
+    environment: {CLICKHOUSE_DB: default, CLICKHOUSE_USER: langfuse, CLICKHOUSE_PASSWORD: '${LANGFUSE_CLICKHOUSE_PASSWORD}'}
+    volumes: [langfuse-clickhouse-data:/var/lib/clickhouse, langfuse-clickhouse-logs:/var/log/clickhouse-server]
+    healthcheck: {test: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1'], interval: 5s, timeout: 5s, retries: 10}
+  langfuse-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--requirepass', '${LANGFUSE_REDIS_PASSWORD}', '--maxmemory-policy', 'noeviction']
+volumes:
+  langfuse-db-data:
+  langfuse-clickhouse-data:
+  langfuse-clickhouse-logs:

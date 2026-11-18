@@ -33,7 +33,7 @@ select{padding-right:30px}
 .voice-legend span:before{content:'';display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:baseline}
 .who-user:before{background:#e11d74}.who-ai:before{background:#06b6d4}
 .who-user{color:#e11d74}.who-ai{color:#0891b2}
-.dark .voice-turn.user strong,.dark .who-user{color:#ff6fae}.dark .voice-turn.assistant strong,.dark .who-ai{color:#4fd8f0}
+.dark .voice-side.user,.dark .who-user{color:#ff6fae}.dark .voice-side.assistant,.dark .who-ai{color:#4fd8f0}
 .cite-chip{display:inline-flex;align-items:center;justify-content:center;min-width:19px;height:19px;padding:0 5px;margin:0 2px;border-radius:10px;border:1px solid color-mix(in srgb,var(--primary) 45%,transparent);background:color-mix(in srgb,var(--primary) 14%,transparent);color:var(--primary);font-size:11px;font-weight:600;line-height:1;vertical-align:text-top;cursor:pointer;transition:background .15s}
 .cite-chip:hover,.cite-chip.on{background:var(--primary);color:var(--primary-foreground)}
 

@@ -214,16 +214,19 @@ export function VoicePage({kbs,notify}:{kbs:KB[];notify:Notify}){
     {liveModels.length>0&&<Sel aria-label={tr('เลือกเอนจินเสียง')} value={engine} disabled={on} onChange={ev=>pickEngine(ev.target.value)} className="w-full">{liveModels.map(m=><option key={m.id} value={m.id}>{tr('{name} · สด',{name:m.name})}</option>)}</Sel>}
     {kind==='translate'&&live&&<Sel aria-label={tr('แปลเป็นภาษา')} value={lang} disabled={on} onChange={ev=>pickLang(ev.target.value)} className="w-full">{LANGS.map(([c,n])=><option key={c} value={c}>{tr('แปลเป็น{n}',{n})}</option>)}</Sel>}
     {(!live||kind==='agent')&&<>
-    <div role="group" aria-label={tr('โหมดการตอบ')} className="inline-flex rounded-full border border-border bg-muted/40 p-0.5 text-xs">
-     {([[true,tr('ตอบจากเอกสาร'),FileSearch],[false,tr('คุยทั่วไป'),MessagesSquare]] as const).map(([v,l,Icon])=><button key={l} type="button" aria-pressed={docs===v} disabled={on&&live} onClick={()=>setDocs(v)} className={cn('inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 font-medium transition-colors',docs===v?'bg-background text-primary shadow-xs':'text-muted-foreground hover:text-foreground')}><Icon className="size-4"/>{l}</button>)}
+    <div role="group" aria-label={tr('โหมดการตอบ')} className="grid w-full grid-cols-2 rounded-full border border-border bg-muted/40 p-0.5 text-xs">
+     {([[true,tr('ตอบจากเอกสาร'),FileSearch],[false,tr('คุยทั่วไป'),MessagesSquare]] as const).map(([v,l,Icon])=><button key={l} type="button" aria-pressed={docs===v} disabled={on&&live} onClick={()=>setDocs(v)} className={cn('inline-flex items-center justify-center gap-1.5 rounded-full px-3 py-2 font-medium transition-colors',docs===v?'bg-background text-primary shadow-xs':'text-muted-foreground hover:text-foreground')}><Icon className="size-4"/>{l}</button>)}
     </div>
-    <Button type="button" variant={web&&webOk?'default':'outline'} size="sm" className="h-8 gap-1.5 rounded-full px-3 text-xs" aria-label={tr('ค้นเว็บ')} aria-pressed={web&&webOk&&webAllowed} disabled={!webOk||!webAllowed||(on&&live)} onClick={()=>setWeb(!web)} title={!webAllowed?tr('องค์กรปิดการค้นเว็บ'):webOk?tr('ให้ AI ค้นเว็บเองเมื่อจำเป็น (คำค้นจะถูกส่งออกนอกองค์กร)'):tr('ต้องมีโมเดล LLM ที่ไม่ใช่โหมดสาธิต')}><Globe className="size-4"/>{tr('ค้นเว็บ')}</Button>
+    <Button type="button" variant={web&&webOk?'default':'outline'} size="sm" className="h-9 w-full justify-center gap-1.5 rounded-full px-3 text-xs" aria-label={tr('ค้นเว็บ')} aria-pressed={web&&webOk&&webAllowed} disabled={!webOk||!webAllowed||(on&&live)} onClick={()=>setWeb(!web)} title={!webAllowed?tr('องค์กรปิดการค้นเว็บ'):webOk?tr('ให้ AI ค้นเว็บเองเมื่อจำเป็น (คำค้นจะถูกส่งออกนอกองค์กร)'):tr('ต้องมีโมเดล LLM ที่ไม่ใช่โหมดสาธิต')}><Globe className="size-4"/>{tr('ค้นเว็บ')}</Button>
     {docs&&<Sel aria-label={tr('เลือกคลังความรู้')} value={kb} disabled={on} onChange={ev=>setKb(ev.target.value)} className="w-full"><option value="">{tr('ทุกคลังความรู้')}</option>{kbs.map(k=><option key={k.id} value={k.id}>{k.name}</option>)}</Sel>}
     </>}
    </div>
   </section>
   {((googleTts&&!live)||(live&&kind==='agent'))&&<details className="card padded order-3 lg:col-start-2"><summary className="cursor-pointer text-sm font-medium">{tr('เสียงที่ใช้ตอบ: {voice}{v1}',{voice,v1:live&&liveModel?` · ${liveModel.name}`:''})}</summary><div className="mt-3"><VoicePicker key={live?liveModel?.id:'tts'} value={voice} onChange={pickVoice} modelId={live?liveModel?.id:undefined} live={live} notify={notify}/></div></details>}
-  {turns.length>0&&<div className="card padded voice-log order-4 max-h-[40vh] overflow-y-auto lg:col-start-2">{turns.map((t,i)=><p key={i} className={'voice-turn '+t.role}><strong>{kind==='agent'||!live?(t.role==='user'?tr('คุณ'):'AI'):(t.role==='user'?tr('ต้นฉบับ'):tr('คำแปล'))}</strong> {t.text||'…'}</p>)}</div>}
+  {turns.length>0&&<div className="card padded voice-log order-4 max-h-[40vh] overflow-y-auto lg:col-span-2 lg:col-start-1" role="log" aria-label={tr('ข้อความถอดเสียง')}>
+   <p className="voice-side user" aria-hidden="true">{kind==='agent'||!live?tr('คุณ'):tr('ต้นฉบับ')}</p><p className="voice-side assistant" aria-hidden="true">{kind==='agent'||!live?'AI':tr('คำแปล')}</p>
+   {turns.map((t,i)=><p key={i} className={'voice-turn '+t.role}><span className="sr-only">{kind==='agent'||!live?(t.role==='user'?tr('คุณ'):'AI'):(t.role==='user'?tr('ต้นฉบับ'):tr('คำแปล'))} </span>{t.text||'…'}</p>)}
+  </div>}
   </div>
  </>
 }

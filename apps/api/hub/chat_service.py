@@ -201,6 +201,9 @@ async def _chat_response(body,request,u,db):
         if u.monthly_budget and month_spend(db,u.id)>u.monthly_budget:raise HTTPException(429,'งบประมาณรายเดือนของคุณไม่พอสำหรับคำขอนี้')
     db.commit()
 
+    from .tracing import ChatTrace
+    trace=ChatTrace(question=body.question,user_id=user_id,tenant_id=tenant,conversation_id=conversation_id,found=found,knowledge_base_id=body.knowledge_base_id,agent=agent,web=web)
+
     async def generate():
         answer='';thought=ThoughtFilter();web_found=[];made=[];paused=[];input_tokens=output_tokens=0;reported=False;complete=False;error='';used=snapshots[0]
         try:
@@ -296,6 +299,7 @@ async def _chat_response(body,request,u,db):
                     if not (hit_answer and complete):meter.estimated=True
                     if complete and answer and not hit_answer and cache_key and reported:savings.cache_store(tenant,cache_key,body.question,answer,citations,used['name'],meter.cost,sp['cache_days'])
                 save.add(Audit(tenant_id=tenant,user_id=user_id,actor=actor,action=('Agent ตอบคำถาม' if agent else 'ถามคำถามจากเอกสาร') if complete else 'คำถามหยุดหรือไม่สำเร็จ',detail=body.question[:100]));save.commit()
+        trace.finish(answer=answer,error=error,complete=complete,model=used,messages=messages,input_tokens=input_tokens,output_tokens=output_tokens,cost=(input_tokens*used['input_price']+output_tokens*used['output_price'])/1e6 if reported else 0,estimated=not reported,cache_hit=bool(hit_answer and complete))
         if hit_answer and complete:savings.register_hit(hit_id,tenant,user_id,hit_cost)
         savings.check_budget_alerts(tenant,user_id)
         if complete:yield event('done',message_id=assistant_id)

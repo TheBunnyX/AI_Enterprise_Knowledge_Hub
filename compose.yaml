@@ -14,6 +14,12 @@ x-api-env: &api-env
   S3_SECRET_KEY: ${S3_SECRET_KEY:?Run scripts/setup-env.ps1 first}
   S3_BUCKET: knowledge
   QDRANT_URL: http://qdrant:6333
+  # Optional Langfuse tracing (compose.langfuse.yaml). Off while the keys are empty.
+  LANGFUSE_HOST: ${LANGFUSE_HOST:-}
+  LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+  LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
+  LANGFUSE_CAPTURE_CONTENT: ${LANGFUSE_CAPTURE_CONTENT:-true}
+  LANGFUSE_ENVIRONMENT: ${LANGFUSE_ENVIRONMENT:-default}
   CELERY_BROKER_URL: redis://redis:6379/0
   LITELLM_URL: ${LITELLM_URL:-}
   LITELLM_KEY: ${LITELLM_KEY:-}
