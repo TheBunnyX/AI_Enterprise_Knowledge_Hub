@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" width="1200" height="700" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <style>
+      .t{font-size:26px;font-weight:700;fill:#0f172a}
+      .sub{font-size:15px;fill:#475569}
+      .root{font-size:17px;font-weight:700;fill:#fff}
+      .d{font-size:16px;font-weight:700;fill:#0f172a}
+      .m{font-family:Consolas,Menlo,monospace;font-size:14px;fill:#1e3a8a}
+      .n{font-size:14px;fill:#475569}
+      .card{fill:#f8fafc;stroke:#cbd5e1;stroke-width:1.5}
+      .link{stroke:#94a3b8;stroke-width:2;fill:none}
+    </style>
+  </defs>
+  <rect width="1200" height="700" fill="#ffffff"/>
+  <text x="40" y="48" class="t">AI Knowledge Hub - Repository Structure</text>
+  <text x="40" y="74" class="sub">Where each part of the system lives and what it is responsible for.</text>
+
+  <rect x="470" y="96" width="260" height="40" rx="10" fill="#0f172a"/><text x="600" y="122" text-anchor="middle" class="root">ai-knowledge-hub/</text>
+  <path d="M600 136 L600 160 M150 160 L1050 160 M150 160 L150 182 M410 160 L410 182 M670 160 L670 182 M930 160 L930 182" class="link"/>
+
+  <!-- apps/web -->
+  <rect x="40" y="182" width="220" height="250" rx="12" class="card"/>
+  <rect x="40" y="182" width="220" height="6" rx="3" fill="#2563eb"/>
+  <text x="56" y="214" class="d">apps/web</text><text x="56" y="236" class="n">Next.js 16 frontend, Thai UI</text>
+  <text x="56" y="266" class="m">app/</text><text x="56" y="284" class="n">routes and layouts</text>
+  <text x="56" y="310" class="m">components/</text><text x="56" y="328" class="n">chat, admin, PDF viewer</text>
+  <text x="56" y="354" class="m">lib/</text><text x="56" y="372" class="n">API client, i18n, helpers</text>
+  <text x="56" y="398" class="m">tests/</text><text x="56" y="416" class="n">Vitest component tests</text>
+
+  <!-- apps/api -->
+  <rect x="290" y="182" width="240" height="250" rx="12" class="card"/>
+  <rect x="290" y="182" width="240" height="6" rx="3" fill="#0d9488"/>
+  <text x="306" y="214" class="d">apps/api</text><text x="306" y="236" class="n">FastAPI backend (Python 3.12)</text>
+  <text x="306" y="266" class="m">hub/</text><text x="306" y="284" class="n">auth, ingestion, search, chat,</text><text x="306" y="302" class="n">agent, admin, backups, tracing</text>
+  <text x="306" y="328" class="m">migrations/</text><text x="306" y="346" class="n">Alembic schema history</text>
+  <text x="306" y="372" class="m">eval/</text><text x="306" y="390" class="n">retrieval and answer evaluation</text>
+  <text x="306" y="416" class="m">tests/</text><text x="400" y="416" class="n">214 backend tests</text>
+
+  <!-- infra -->
+  <rect x="560" y="182" width="220" height="250" rx="12" class="card"/>
+  <rect x="560" y="182" width="220" height="6" rx="3" fill="#7c3aed"/>
+  <text x="576" y="214" class="d">infra + compose</text><text x="576" y="236" class="n">How it is built and run</text>
+  <text x="576" y="266" class="m">infrastructure/docker/</text><text x="576" y="284" class="n">multi-stage, non-root images</text>
+  <text x="576" y="310" class="m">compose.yaml</text><text x="576" y="328" class="n">development stack</text>
+  <text x="576" y="354" class="m">compose.dev.yaml</text><text x="576" y="372" class="n">loopback ports for tests</text>
+  <text x="576" y="398" class="m">compose.prod.yaml</text><text x="576" y="416" class="n">production baseline</text>
+
+  <!-- ops -->
+  <rect x="810" y="182" width="350" height="250" rx="12" class="card"/>
+  <rect x="810" y="182" width="350" height="6" rx="3" fill="#b45309"/>
+  <text x="826" y="214" class="d">scripts, docs and extras</text><text x="826" y="236" class="n">Tooling and documentation</text>
+  <text x="826" y="266" class="m">scripts/</text><text x="826" y="284" class="n">.env setup, Langfuse setup, local start</text>
+  <text x="826" y="310" class="m">docs/</text><text x="826" y="328" class="n">architecture, operations, limitations,</text><text x="826" y="346" class="n">verification, screenshots</text>
+  <text x="826" y="372" class="m">compose.langfuse.yaml</text><text x="826" y="390" class="n">optional self-hosted LLM tracing</text>
+  <text x="826" y="416" class="m">Makefile  LICENSE  README.md</text>
+
+  <!-- hub detail -->
+  <text x="40" y="472" class="d">Inside apps/api/hub (key modules)</text>
+  <g>
+    <rect x="40" y="488" width="270" height="86" rx="10" class="card"/><text x="56" y="514" class="m">auth.py  rls.py</text><text x="56" y="536" class="n">sessions, OIDC, roles, RLS</text><text x="56" y="556" class="n">tenant isolation lives here</text>
+    <rect x="330" y="488" width="270" height="86" rx="10" class="card"/><text x="346" y="514" class="m">uploads.py  tasks.py  ocr.py</text><text x="346" y="536" class="n">validate, parse, OCR, chunk</text><text x="346" y="556" class="n">the ingestion pipeline</text>
+    <rect x="620" y="488" width="270" height="86" rx="10" class="card"/><text x="636" y="514" class="m">retrieval.py  embeddings.py</text><text x="636" y="536" class="n">BM25 + vectors + RRF, reranking</text><text x="636" y="556" class="n">how search finds the answer</text>
+    <rect x="910" y="488" width="250" height="86" rx="10" class="card"/><text x="926" y="514" class="m">chat_service.py  agent.py</text><text x="926" y="536" class="n">answers, citations, tool loop</text><text x="926" y="556" class="n">cite_check.py checks citations</text>
+    <rect x="40" y="590" width="270" height="86" rx="10" class="card"/><text x="56" y="616" class="m">gateway.py  policies.py</text><text x="56" y="638" class="n">providers, encrypted keys, model</text><text x="56" y="658" class="n">policies and budgets</text>
+    <rect x="330" y="590" width="270" height="86" rx="10" class="card"/><text x="346" y="616" class="m">backups.py  alerts.py  jobs.py</text><text x="346" y="638" class="n">encrypted backups, recovery,</text><text x="346" y="658" class="n">in-app alerts</text>
+    <rect x="620" y="590" width="270" height="86" rx="10" class="card"/><text x="636" y="616" class="m">tracing.py</text><text x="636" y="638" class="n">sends retrieval and generation</text><text x="636" y="658" class="n">spans to Langfuse</text>
+    <rect x="910" y="590" width="250" height="86" rx="10" class="card"/><text x="926" y="616" class="m">models.py  schemas.py</text><text x="926" y="638" class="n">database tables and API types</text><text x="926" y="658" class="n">seed.py creates demo data</text>
+  </g>
+</svg>

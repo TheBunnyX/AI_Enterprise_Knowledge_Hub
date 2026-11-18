@@ -16,6 +16,7 @@ eval/corpus are sent to that provider. It needs the extra packages in eval/requi
 
     python -m eval.answers                 # 12 questions, judge = gemini-flash-lite-latest with GOOGLE_AI_API_KEY from .env
     python -m eval.answers --limit 45      # every question
+    python -m eval.answers --langfuse      # also send each question, answer, passages and the scores to Langfuse (LANGFUSE_* in .env)
     EVAL_JUDGE_URL=https://openrouter.ai/api/v1 EVAL_JUDGE_KEY=sk-or-... EVAL_JUDGE_MODEL=... python -m eval.answers
 """
 import argparse, json, os, sys, time, types, warnings
@@ -49,11 +50,35 @@ def generate(client, url, key, model, question, found):
         r.raise_for_status(); return r.json()['choices'][0]['message']['content'] or ''
 
 
+def send_to_langfuse(rows, table, metrics, judge_model):
+    """One Langfuse trace per evaluated question (question, retrieved passages, answer) with the Ragas scores attached, so runs can be compared over time."""
+    env_file = base.API.parent.parent / '.env'
+    env = dict(line.strip().split('=', 1) for line in env_file.read_text(encoding='utf-8').splitlines() if '=' in line and not line.startswith('#')) if env_file.exists() else {}
+    get = lambda k: os.getenv(k) or env.get(k, '')
+    host = get('LANGFUSE_URL') or get('LANGFUSE_HOST')
+    if not (get('LANGFUSE_PUBLIC_KEY') and get('LANGFUSE_SECRET_KEY') and host): raise SystemExit('Set LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY and LANGFUSE_URL (http://localhost:3100 from the host) to use --langfuse')
+    from langfuse import Langfuse
+    lf = Langfuse(public_key=get('LANGFUSE_PUBLIC_KEY'), secret_key=get('LANGFUSE_SECRET_KEY'), host=host, environment='eval')
+    run = time.strftime('%Y-%m-%d %H:%M')
+    for index, row in enumerate(rows):
+        root = lf.start_observation(name='ragas-eval', as_type='span', input=row['user_input'], metadata={'run': run, 'reference': row['reference'], 'judge': judge_model})
+        root.start_observation(name='retrieval', as_type='retriever', input=row['user_input'], output=row['retrieved_contexts']).end()
+        root.start_observation(name='answer', as_type='generation', model=os.getenv('EVAL_JUDGE_MODEL', judge_model), input=row['user_input'], output=row['response']).end()
+        for name in metrics:
+            value = table[name].iloc[index]
+            if value == value:  # skip NaN: Ragas could not score this row
+                root.score_trace(name=name, value=float(value), data_type='NUMERIC', comment=f'ragas run {run}')
+        root.update(output=row['response']); root.end()
+    lf.flush()
+    print(f'sent {len(rows)} traces and their scores to Langfuse ({host}), environment "eval"')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     parser.add_argument('--limit', type=int, default=12, help='questions to evaluate, spread evenly over the set (each costs about 5 LLM requests)')
     parser.add_argument('--embedding', help='embedding model for retrieval; default: EMBEDDING_MODEL from .env')
     parser.add_argument('-k', type=int, default=4)
+    parser.add_argument('--langfuse', action='store_true', help='send traces and scores to Langfuse (LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY and LANGFUSE_URL or LANGFUSE_HOST in .env)')
     parser.add_argument('--json', help='write per-question results to this file')
     args = parser.parse_args()
     url, key, model = judge_settings()
@@ -91,6 +116,7 @@ def main():
     for name in metrics:
         scored = table[name].dropna()
         print(f'{name:<28}{scored.mean():>7.3f}   ({len(scored)}/{len(table)} scored)')
+    if args.langfuse: send_to_langfuse(rows, table, metrics, model)
     if args.json: Path(args.json).write_text(table.to_json(orient='records', force_ascii=False, indent=1), encoding='utf-8')
 
 

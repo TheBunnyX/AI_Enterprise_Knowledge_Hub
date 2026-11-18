@@ -14,6 +14,8 @@ lint:
 	cd apps/web && npm run typecheck
 eval:
 	cd apps/api && ../../.venv/bin/python -m eval.run --min-hit 0.9
+eval-answers:  # Ragas answer quality (calls the judge LLM, see eval/answers.py); add ARGS=--langfuse to record the scores in Langfuse
+	cd apps/api && ../../.venv/bin/python -m eval.answers $(ARGS)
 dev:
 	docker compose -f compose.yaml -f compose.dev.yaml up -d --build
 	docker compose -f compose.yaml -f compose.dev.yaml watch
