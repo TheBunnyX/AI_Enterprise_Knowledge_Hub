@@ -1,0 +1,4 @@
+# Extra packages for eval.deepeval_run only (DeepEval judge). Not part of the app image and kept out of the app venv because it
+# changes shared packages: uv venv .venv-eval && uv pip install --python .venv-eval/bin/python -r apps/api/eval/requirements-deepeval.txt
+deepeval==4.3.4
+httpx==0.28.1

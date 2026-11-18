@@ -82,3 +82,19 @@ def speak(base, key, model, text, voice=''):
         m = re.search(r'rate=(\d+)', mime)
         return _wav(audio, int(m.group(1)) if m else 24000), 'audio/wav'
     return audio, mime.split(';')[0]
+
+GROK_VOICES = {'eve', 'ara', 'rex', 'sal', 'leo'}  # voices of x-ai/grok-voice-tts; the OpenAI names (alloy ...) are not accepted
+
+
+def openrouter_speech(api_id, text, voice='', speed=None):
+    """Request for OpenRouter's /audio/speech. Providers differ: Gemini TTS only returns raw PCM and needs a Gemini voice,
+    Grok needs one of its own voices, others take the OpenAI-style call. Returns (json body, mime type, converter or None)."""
+    low = api_id.lower()
+    if low.startswith('google/'):
+        body = {'model': api_id, 'input': text, 'voice': voice if voice in VOICE_NAMES else DEFAULT_VOICE, 'response_format': 'pcm'}
+        return body, 'audio/wav', _wav
+    if low.startswith('x-ai/'):
+        return {'model': api_id, 'input': text, 'voice': voice.lower() if voice.lower() in GROK_VOICES else 'eve', 'response_format': 'mp3'}, 'audio/mpeg', None
+    body = {'model': api_id, 'input': text, 'voice': voice or 'alloy', 'response_format': 'mp3'}
+    if speed: body['speed'] = speed
+    return body, 'audio/mpeg', None

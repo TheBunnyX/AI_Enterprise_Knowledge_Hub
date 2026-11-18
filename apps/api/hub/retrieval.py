@@ -1,12 +1,12 @@
 """Document parsing, chunking, indexing and hybrid search. Each embedding version has its own collection, so spaces never mix."""
-import hashlib, io, math, os, re
+import hashlib, io, math, os, re, secrets
 from collections import Counter
 from sqlalchemy import select, delete
 from .database import SessionLocal
-from .models import Chunk, Document
+from .models import Chunk, Document, KnowledgeBase
 from . import storage
 
-from . import embeddings
+from . import embeddings, multimodal
 COLLECTION = embeddings.specification()['collection']
 def tokens(text):
     s = re.sub(r'\s+', '', text.lower())
@@ -108,14 +108,24 @@ def ingest(document_id,raise_errors=False):
         if not d: return
         failure=None
         try:
-            pages=parse(d.name,storage.get(d.storage_key))
+            raw=storage.get(d.storage_key)
+            pages=parse(d.name,raw)
             chunks=[]
             for page,text in pages:
                 for part in split(text):
                     chunks.append(Chunk(tenant_id=d.tenant_id,document_id=d.id,page=page,text=part,embedding_version=embeddings.specification()['version']))
+            # Multimodal RAG: each picture becomes a chunk whose text is a vision-model description and whose vector is the picture itself.
+            kb=db.get(KnowledgeBase,d.knowledge_base_id)  # pictures are indexed only in libraries that opted in
+            for page,picture,description,vector in (multimodal.index_pictures(d.name,raw) if multimodal.enabled() and kb and kb.multimodal else []):
+                key=f'{d.tenant_id}/chunk-images/{d.id}/{secrets.token_hex(8)}.jpg'; storage.put(key,picture)
+                chunks.append(Chunk(tenant_id=d.tenant_id,document_id=d.id,page=page,text=f'[ภาพในหน้า {page}] '+description,kind='image',image_key=key,mm_embedding=vector,embedding_version=embeddings.specification()['version']))
             if not chunks: raise ValueError('ไม่พบข้อความที่อ่านได้ เอกสารสแกนต้องทำ OCR ก่อนอัปโหลด')
             vectors=embeddings.batch([c.text for c in chunks],d.tenant_id)
             for c,v in zip(chunks,vectors):c.embedding=v
+            for old in db.scalars(select(Chunk.image_key).where(Chunk.document_id==d.id,Chunk.kind=='image')):
+                try:
+                    if old:storage.remove(old)
+                except Exception: pass  # an orphaned picture file is harmless
             db.execute(delete(Chunk).where(Chunk.document_id==d.id))
             db.add_all(chunks); db.flush()
             if os.getenv('QDRANT_URL'):
@@ -123,12 +133,45 @@ def ingest(document_id,raise_errors=False):
                 client=qdrant(); ensure_collection(client)
                 client.delete(COLLECTION,models.FilterSelector(filter=models.Filter(must=[models.FieldCondition(key='tenant_id',match=models.MatchValue(value=d.tenant_id)),models.FieldCondition(key='document_id',match=models.MatchValue(value=d.id))])),wait=True)
                 client.upsert(COLLECTION,[models.PointStruct(id=c.id,vector=c.embedding,payload={'tenant_id':d.tenant_id,'document_id':d.id,'knowledge_base_id':d.knowledge_base_id}) for c in chunks],wait=True)
+                if multimodal.enabled(): index_picture_vectors(client,d,[c for c in chunks if c.kind=='image'])
             d.status='ready'; d.error=''
         except Exception as e:
             failure=e
             db.rollback(); d=db.get(Document,document_id); d.status='failed'; d.error=str(e)[:400]
         db.commit()
     if failure is not None and raise_errors: raise failure
+
+def ensure_picture_collection(client):
+    from qdrant_client import models
+    name=multimodal.collection()
+    if not client.collection_exists(name): client.create_collection(name,vectors_config=models.VectorParams(size=multimodal.settings()['dims'],distance=models.Distance.COSINE))
+    return name
+
+def index_picture_vectors(client,d,pictures):
+    """Picture vectors live in their own collection (another vector space); the document's old points are replaced."""
+    from qdrant_client import models
+    name=ensure_picture_collection(client)
+    client.delete(name,models.FilterSelector(filter=models.Filter(must=[models.FieldCondition(key='document_id',match=models.MatchValue(value=d.id))])))
+    if pictures: client.upsert(name,[models.PointStruct(id=c.id,vector=c.mm_embedding,payload={'tenant_id':d.tenant_id,'document_id':d.id,'knowledge_base_id':d.knowledge_base_id}) for c in pictures],wait=True)
+
+def has_pictures(db,tenant_id,docs):
+    stmt=select(Chunk.id).where(Chunk.tenant_id==tenant_id,Chunk.kind=='image')
+    if len(docs)<=IN_LIMIT: stmt=stmt.where(Chunk.document_id.in_(list(docs)))
+    return db.scalar(stmt.limit(1)) is not None
+
+def picture_hits(db,tenant_id,query,docs):
+    """[(similarity, chunk id)] of the pictures closest to the question in the multimodal vector space."""
+    qv=multimodal.embed_text(query)
+    if os.getenv('QDRANT_URL'):
+        from qdrant_client import models
+        client=qdrant()
+        if not client.collection_exists(multimodal.collection()): return []
+        allowed=models.Filter(must=[models.FieldCondition(key='tenant_id',match=models.MatchValue(value=tenant_id)),models.FieldCondition(key='document_id',match=models.MatchAny(any=list(docs)))])
+        return [(p.score,str(p.id)) for p in client.query_points(multimodal.collection(),query=qv,query_filter=allowed,limit=20).points]
+    stmt=select(Chunk.id,Chunk.document_id,Chunk.mm_embedding).where(Chunk.tenant_id==tenant_id,Chunk.kind=='image')
+    if len(docs)<=IN_LIMIT: stmt=stmt.where(Chunk.document_id.in_(list(docs)))
+    hits=[(sum(a*b for a,b in zip(qv,r.mm_embedding)),r.id) for r in db.execute(stmt) if r.document_id in docs and r.mm_embedding and len(r.mm_embedding)==len(qv)]
+    return sorted(hits,key=lambda x:x[0],reverse=True)[:20]
 
 IN_LIMIT=500  # above this many documents the scope is checked in Python instead of a long SQL IN list
 
@@ -143,7 +186,7 @@ def searchable_documents(db,tenant_id,kb_id=None,document_ids=None,user=None):
         readable=set(visible_documents(db,user)); docs={k:v for k,v in docs.items() if k in readable}
     return docs
 
-def search(db, tenant_id, query, kb_id=None, document_ids=None, mode='hybrid', limit=10, user=None, relaxed=False):
+def search(db, tenant_id, query, kb_id=None, document_ids=None, mode='hybrid', limit=10, user=None, relaxed=False, per_doc=None, pool=None):
     """Hybrid retrieval: BM25 over tone-insensitive trigrams (sparse) and embedding similarity (dense), fused by reciprocal rank.
 
     Only documents the user may read are considered, and that same list filters the vector store, so its top hits are
@@ -154,16 +197,16 @@ def search(db, tenant_id, query, kb_id=None, document_ids=None, mode='hybrid', l
     vector_store=use_dense and bool(os.getenv('QDRANT_URL'))
     qv=embeddings.batch([query],tenant_id,'query')[0] if use_dense else None
     scope=[Chunk.tenant_id==tenant_id,Chunk.embedding_version==spec['version']]
-    chunks={}; sparse=[]; dense=[]  # chunks: id -> (document_id, page, text)
+    chunks={}; kinds={}; sparse=[]; dense=[]; pictures=[]  # chunks: id -> (document_id, page, text); kinds: id -> 'text' | 'image'
     if docs and (use_sparse or not vector_store):
         local_dense=use_dense and not vector_store
-        stmt=select(Chunk.id,Chunk.document_id,Chunk.page,Chunk.text,*([Chunk.embedding] if local_dense else [])).where(*scope)
+        stmt=select(Chunk.id,Chunk.document_id,Chunk.page,Chunk.text,Chunk.kind,*([Chunk.embedding] if local_dense else [])).where(*scope)
         if len(docs)<=IN_LIMIT: stmt=stmt.where(Chunk.document_id.in_(list(docs)))
         terms=list(dict.fromkeys(lexical_tokens(query))) if use_sparse else []; wanted=set(terms)
         stats=[]; frequency=Counter(); total=0
         for row in db.execute(stmt):
             if row.document_id not in docs: continue
-            chunks[row.id]=(row.document_id,row.page,row.text)
+            chunks[row.id]=(row.document_id,row.page,row.text); kinds[row.id]=row.kind
             if use_sparse:
                 found=lexical_tokens(row.text+' '+docs[row.document_id].name)
                 tf=Counter(t for t in found if t in wanted)  # only the query's terms matter for the score
@@ -185,17 +228,31 @@ def search(db, tenant_id, query, kb_id=None, document_ids=None, mode='hybrid', l
             points=client.query_points(COLLECTION,query=qv,query_filter=allowed,limit=50).points
             missing=[str(p.id) for p in points if str(p.id) not in chunks]
             if missing:
-                for row in db.execute(select(Chunk.id,Chunk.document_id,Chunk.page,Chunk.text).where(*scope,Chunk.id.in_(missing))):
-                    if row.document_id in docs: chunks[row.id]=(row.document_id,row.page,row.text)
+                for row in db.execute(select(Chunk.id,Chunk.document_id,Chunk.page,Chunk.text,Chunk.kind).where(*scope,Chunk.id.in_(missing))):
+                    if row.document_id in docs: chunks[row.id]=(row.document_id,row.page,row.text); kinds[row.id]=row.kind
             dense=[(p.score,str(p.id)) for p in points if str(p.id) in chunks]
-    sparse.sort(key=lambda x:x[0],reverse=True); dense.sort(key=lambda x:x[0],reverse=True)
+    if use_dense and docs and multimodal.enabled() and has_pictures(db,tenant_id,docs):  # no picture indexed in scope: skip the extra embedding call
+        try:
+            pictures=picture_hits(db,tenant_id,query,docs)
+            missing=[i for _,i in pictures if i not in chunks]
+            if missing:
+                for row in db.execute(select(Chunk.id,Chunk.document_id,Chunk.page,Chunk.text,Chunk.kind).where(Chunk.tenant_id==tenant_id,Chunk.id.in_(missing))):
+                    if row.document_id in docs: chunks[row.id]=(row.document_id,row.page,row.text); kinds[row.id]=row.kind
+            pictures=[(s,i) for s,i in pictures if i in chunks]
+        except Exception:
+            import logging; logging.getLogger('hub.multimodal').warning('picture search skipped',exc_info=True); pictures=[]  # text search still answers
+    sparse.sort(key=lambda x:x[0],reverse=True); dense.sort(key=lambda x:x[0],reverse=True); pictures.sort(key=lambda x:x[0],reverse=True)
     ranks={}
-    for source in ([sparse] if mode=='keyword' else [dense] if mode=='semantic' else [sparse,dense]):
+    for source in ([sparse] if mode=='keyword' else [dense,pictures] if mode=='semantic' else [sparse,dense,pictures]):
         for rank,(score,id) in enumerate(source):
-            if score < (0 if relaxed else 0.10 if source is sparse else spec.get('min_score',0.16)) or (relaxed and source is sparse and score<=0): continue
+            if score < (multimodal.settings()['min_score'] if source is pictures else 0 if relaxed else 0.10 if source is sparse else spec.get('min_score',0.16)) or (relaxed and source is sparse and score<=0): continue
             old=ranks.get(id,[0,id]); old[0]+=1/(60+rank+1); ranks[id]=old
-    results=[]
-    for score,id in sorted(ranks.values(),key=lambda x:x[0],reverse=True)[:(max(limit,30) if relaxed else limit)]:
+    results=[]; taken={}
+    cap=pool or (max(limit,30) if relaxed else limit)  # how many candidates go to the reranker (a CPU model: the cost grows with this number)
+    for score,id in sorted(ranks.values(),key=lambda x:x[0],reverse=True):
+        if len(results)>=cap:break
         document_id,page,text=chunks[id]; d=docs[document_id]
-        results.append({'chunk_id':id,'document_id':document_id,'name':d.name,'version':d.version,'page':page,'snippet':text,'score':round(score,5),'knowledge_base_id':d.knowledge_base_id})
+        if per_doc and taken.get(document_id,0)>=per_doc:continue  # keep a few passages per document so the list covers more documents
+        taken[document_id]=taken.get(document_id,0)+1
+        results.append({'chunk_id':id,'document_id':document_id,'name':d.name,'version':d.version,'page':page,'snippet':text,'score':round(score,5),'knowledge_base_id':d.knowledge_base_id,'kind':kinds.get(id,'text')})
     return embeddings.rerank(query,results,floor=0 if relaxed else None)

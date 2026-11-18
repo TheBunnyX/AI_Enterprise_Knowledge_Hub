@@ -22,6 +22,7 @@ router = APIRouter(prefix='/api/voice')
 MAX_AUDIO = 10 * 1024 * 1024
 SPEAK_LABEL = 'เสียง · พูด'
 LISTEN_LABEL = 'เสียง · ถอดเสียง'
+BALANCE_MSG = 'ยอดคงเหลือหรือวงเงิน API key ของผู้ให้บริการไม่พอสำหรับงานเสียง (เช่น OpenRouter ต้องมียอดอย่างน้อย $0.50 สำหรับถอดเสียง) ตรวจที่หน้าตั้งค่าของผู้ให้บริการ'
 QUOTA_MSG = 'โควตา Google AI ของโมเดลเสียงนี้เต็ม (แพ็กเกจฟรีจำกัดต่อนาที/วัน) แนะนำให้เลือกเอนจิน "สด (Live)" ในหน้านี้แทน'
 
 def guard(db, u, provider=''):
@@ -58,8 +59,12 @@ async def transcribe(file: UploadFile = File(...), model_id: str = Form(''), lan
         return {'text': text}
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(60, connect=10), follow_redirects=False) as client:
-            r = await client.post(url + '/audio/transcriptions', headers=gateway.headers(key), data={'model': model.api_id, 'language': language}, files={'file': ('speech.webm', data, file.content_type or 'audio/webm')})
+            name = (file.filename or 'speech.webm').replace('\\', '/').split('/')[-1][:80]  # providers read the audio format from the file name
+            r = await client.post(url + '/audio/transcriptions', headers=gateway.headers(key), data={'model': model.api_id, 'language': language}, files={'file': (name, data, file.content_type or 'audio/webm')})
             r.raise_for_status(); text = (r.json().get('text') or '').strip()
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 402: raise HTTPException(402, BALANCE_MSG)
+        raise HTTPException(502, 'ถอดเสียงไม่สำเร็จ ตรวจโมเดลถอดเสียงและ Gateway')
     except (httpx.HTTPError, ValueError):
         raise HTTPException(502, 'ถอดเสียงไม่สำเร็จ ตรวจโมเดลถอดเสียงและ Gateway')
     record(db, u, LISTEN_LABEL, model, r)
@@ -136,10 +141,15 @@ async def speak(body: SpeakInput, u: User = Depends(current_user), db: Session =
         return Response(content=audio, media_type=mime, headers={'Cache-Control': 'no-store'})
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(60, connect=10), follow_redirects=False) as client:
-            r = await client.post(url + '/audio/speech', headers=gateway.headers(key), json={'model': model.api_id, 'input': body.text, 'voice': body.voice, 'response_format': 'mp3'})
-            r.raise_for_status(); audio = r.content
+            from . import google_audio
+            payload, speech_mime, convert = google_audio.openrouter_speech(model.api_id, body.text, body.voice)
+            r = await client.post(url + '/audio/speech', headers=gateway.headers(key), json=payload)
+            r.raise_for_status(); audio = convert(r.content) if convert and r.content else r.content
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 402: raise HTTPException(402, BALANCE_MSG)
+        raise HTTPException(502, 'สร้างเสียงไม่สำเร็จ ตรวจโมเดลอ่านออกเสียงและ Gateway')
     except httpx.HTTPError:
         raise HTTPException(502, 'สร้างเสียงไม่สำเร็จ ตรวจโมเดลอ่านออกเสียงและ Gateway')
     if not audio: raise HTTPException(502, 'ผู้ให้บริการไม่ส่งเสียงกลับมา')
     record(db, u, SPEAK_LABEL, model, r)
-    return Response(content=audio, media_type='audio/mpeg', headers={'Cache-Control': 'no-store'})
+    return Response(content=audio, media_type=speech_mime, headers={'Cache-Control': 'no-store'})

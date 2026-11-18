@@ -394,6 +394,7 @@ class KBEdit(BaseModel):
     name:str=Field(min_length=1,max_length=100)
     description:str=Field(default='',max_length=500)
     department_id:str|None=Field(default=None,max_length=36)  # only a Super Admin may move a knowledge base to another department
+    multimodal:bool|None=None  # None = leave as it is
 
 @router.put('/knowledge-bases/{id}')
 def edit_kb(id:str,body:KBEdit,u:User=Depends(current_user),db:Session=Depends(db_session)):
@@ -402,4 +403,30 @@ def edit_kb(id:str,body:KBEdit,u:User=Depends(current_user),db:Session=Depends(d
         if not privileged(u):raise HTTPException(403,'ย้ายคลังความรู้ไปแผนกอื่นได้เฉพาะ Super Admin')
         if body.department_id and not db.scalar(select(Group.id).where(Group.id==body.department_id,Group.tenant_id==u.tenant_id,Group.kind=='department')):raise HTTPException(422,'ไม่พบแผนกนี้ในองค์กร')
         kb.department_id=body.department_id
+    if body.multimodal is not None:kb.multimodal=body.multimodal
     kb.name=body.name;kb.description=body.description;db.commit();log(db,u,'แก้ไขคลังความรู้',kb.name);return {'ok':True}
+
+@router.post('/knowledge-bases/{id}/multimodal/apply')
+def apply_multimodal(id:str,background:BackgroundTasks,u:User=Depends(current_user),db:Session=Depends(db_session)):
+    """Re-index only the documents whose picture chunks must change: with the switch on, files that contain pictures and have none indexed yet;
+    with it off, files that still hold picture chunks (so they are removed). Everything else is left alone."""
+    manager(u);require_kb(db,u,id,True);kb=db.get(KnowledgeBase,id)
+    from . import multimodal
+    from .retrieval import Chunk
+    if kb.multimodal and not multimodal.enabled():raise HTTPException(409,'ยังไม่ได้เปิด Multimodal RAG ของระบบ (MULTIMODAL_RAG) หรือยังไม่ได้ตั้งค่า API key ของ Google AI')
+    have=set(db.scalars(select(Chunk.document_id).where(Chunk.tenant_id==u.tenant_id,Chunk.kind=='image')))
+    docs=[d for d in db.scalars(select(Document).where(Document.tenant_id==u.tenant_id,Document.knowledge_base_id==id,~Document.id.in_(deleted_ids())))]
+    todo=[]
+    for d in docs:
+        if kb.multimodal:
+            if d.id in have:continue
+            try:
+                if multimodal.contains_pictures(d.name,storage.get(d.storage_key)):todo.append(d)
+            except Exception:continue
+        elif d.id in have:todo.append(d)
+    from .jobs import schedule_ingest
+    for d in todo:d.status='processing'
+    db.commit()
+    for d in todo:schedule_ingest(d.id,background,retry=True)  # a finished task must run again, as the Re-index button does
+    log(db,u,'อัปเดตภาพในคลังความรู้',f'{kb.name}: {len(todo)} เอกสาร')
+    return {'multimodal':kb.multimodal,'documents':len(docs),'reindexed':len(todo)}

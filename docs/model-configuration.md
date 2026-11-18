@@ -40,7 +40,7 @@
 ### โมเดลในเครื่อง (ONNX, CPU)
 
 - `EMBEDDING_MODEL=local:multilingual-e5-small` — 384 มิติ ใช้คำนำหน้า `query: `/`passage: ` เกณฑ์ cosine ขั้นต่ำ `EMBEDDING_MIN_SCORE` (0.80) เปลี่ยนโมเดลแล้วต้อง reindex
-- `RERANK_MODEL=local:bge-reranker-v2-m3` — ONNX INT8 571 MB ตัดผลที่คะแนนต่ำกว่า `RERANK_MIN_SCORE` (0..1, 0 = ไม่ตัด)
+- `RERANK_MODEL=local:bge-reranker-v2-m3` — ONNX INT8 571 MB ตัดผลที่คะแนนต่ำกว่า `RERANK_MIN_SCORE` (0..1, 0 = ไม่ตัด) ค่าแนะนำ `0.01` จากการวัดด้วย `make eval` (คำถามนอกขอบเขตได้ไม่เกิน 0.003 ส่วนค่า 0.1 ทำให้ตัดคำตอบที่ถูกทิ้งราว 9%)
 - โมเดลดาวน์โหลดจาก HuggingFace ครั้งแรกลง `DATA_DIR/models` (volume `api-data`) ปรับเธรดด้วย `ONNX_THREADS`, ขนาดแบตช์ด้วย `ONNX_BATCH_SIZE` / `ONNX_RERANK_BATCH_SIZE`
 - OCR ใช้ PaddleOCR PP-OCRv5 ภาษาไทย (`OCR_LANGUAGES`)
 

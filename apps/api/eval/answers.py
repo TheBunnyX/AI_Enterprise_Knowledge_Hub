@@ -80,6 +80,7 @@ def main():
     parser.add_argument('-k', type=int, default=4)
     parser.add_argument('--langfuse', action='store_true', help='send traces and scores to Langfuse (LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY and LANGFUSE_URL or LANGFUSE_HOST in .env)')
     parser.add_argument('--json', help='write per-question results to this file')
+    parser.add_argument('--dump', help='only retrieve and answer, write the rows to this file and stop before any judge runs (input for eval.deepeval_run)')
     args = parser.parse_args()
     url, key, model = judge_settings()
     questions = base.load_questions(); step = max(1, len(questions) // max(1, args.limit)); sample = questions[::step][:args.limit]
@@ -97,6 +98,9 @@ def main():
     finally:
         from hub.database import engine
         import shutil; engine.dispose(); shutil.rmtree(work, ignore_errors=True)
+    if args.dump:
+        Path(args.dump).write_text(json.dumps({'answer_model': model, 'index': index, 'rows': rows}, ensure_ascii=False, indent=1), encoding='utf-8')
+        print(f'wrote {len(rows)} answered questions to {args.dump}; no judge was called' + ' ' * 20); return
     # Ragas 0.4.3 still imports a module that langchain-community 0.4 removed; it is only needed for Vertex AI.
     stub = types.ModuleType('langchain_community.chat_models.vertexai'); stub.ChatVertexAI = type('ChatVertexAI', (), {})
     sys.modules.setdefault('langchain_community.chat_models.vertexai', stub)

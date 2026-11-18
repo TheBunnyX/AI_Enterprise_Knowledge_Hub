@@ -79,7 +79,7 @@ describe('language switching', () => {
     ['/dashboard', 'USER'], ['/chat', 'USER'], ['/documents', 'USER'], ['/knowledge', 'USER'], ['/knowledge/search', 'USER'], ['/skills', 'USER'],
     ['/settings', 'USER'], ['/voice', 'USER'], ['/studio/image', 'USER'], ['/studio/stt', 'USER'], ['/analytics', 'USER'], ['/nope', 'USER'],
     ['/super-admin', 'SUPER_ADMIN'], ['/super-admin/organizations', 'SUPER_ADMIN'], ['/super-admin/users', 'SUPER_ADMIN'], ['/super-admin/models', 'SUPER_ADMIN'],
-    ['/super-admin/savings', 'SUPER_ADMIN'], ['/super-admin/system', 'SUPER_ADMIN'], ['/super-admin/settings', 'SUPER_ADMIN'], ['/super-admin/billing', 'SUPER_ADMIN'], ['/team', 'DEPARTMENT_ADMIN'],
+    ['/super-admin/savings', 'SUPER_ADMIN'], ['/super-admin/security', 'SUPER_ADMIN'], ['/super-admin/operations', 'SUPER_ADMIN'], ['/super-admin/system', 'SUPER_ADMIN'], ['/super-admin/settings', 'SUPER_ADMIN'], ['/super-admin/billing', 'SUPER_ADMIN'], ['/team', 'DEPARTMENT_ADMIN'],
   ];
   it.each(routes)('renders %s (%s) in English without any Thai text', async (path, role) => {
     pathname = path;

@@ -58,6 +58,12 @@ def validate_url(url):
         raise HTTPException(422,'Production Gateway ต้องใช้ HTTPS')
 
 
+def routing(provider='',url=''):
+    """OpenRouter chooses one of several companies that serve the same model. OPENROUTER_SORT=price (default) sends each chat request to the
+    cheapest one first (others stay as fallbacks); throughput or latency pick the fastest; empty keeps OpenRouter's own load balancing."""
+    sort=os.getenv('OPENROUTER_SORT','price').strip().lower()
+    return {'provider':{'sort':sort}} if sort in ('price','throughput','latency') and (provider=='OpenRouter' or 'openrouter.ai' in (url or '')) else {}
+
 def effort_params(model):
     """Reasoning effort for a chat request. OpenRouter takes reasoning.effort; the OpenAI-compatible gateways take reasoning_effort."""
     effort = model.get('effort') or ''

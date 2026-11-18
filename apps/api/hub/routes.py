@@ -78,7 +78,7 @@ def kbs(u:User=Depends(current_user),db:Session=Depends(db_session)):
     for id,kb in db.execute(select(Document.id,Document.knowledge_base_id).where(Document.tenant_id==u.tenant_id)):
         if id in readable:counts[kb]=counts.get(kb,0)+1
     writable=set(visible_kbs(db,u,True));names=dict(db.execute(select(Group.id,Group.name).where(Group.tenant_id==u.tenant_id,Group.kind=='department')).all())
-    return [{**serialize(b,'id name description department_id'),'department':names.get(b.department_id,''),'can_write':b.id in writable,'documents':counts.get(b.id,0)} for b in bases]
+    return [{**serialize(b,'id name description department_id multimodal'),'department':names.get(b.department_id,''),'can_write':b.id in writable,'documents':counts.get(b.id,0)} for b in bases]
 
 def owner_department(db,u,wanted):
     """The department a new knowledge base belongs to: a Super Admin picks any real one (or none); a department admin's own."""
@@ -94,8 +94,8 @@ def owner_department(db,u,wanted):
 @router.post('/knowledge-bases',status_code=201)
 def create_kb(body:KBCreate,u:User=Depends(current_user),db:Session=Depends(db_session)):
     manager(u)
-    b=KnowledgeBase(tenant_id=u.tenant_id,name=body.name,description=body.description,department_id=owner_department(db,u,body.department_id))
-    db.add(b); db.commit(); audit(db,u,'สร้างคลังความรู้',b.name); return serialize(b,'id name description department_id')
+    b=KnowledgeBase(tenant_id=u.tenant_id,name=body.name,description=body.description,multimodal=body.multimodal,department_id=owner_department(db,u,body.department_id))
+    db.add(b); db.commit(); audit(db,u,'สร้างคลังความรู้',b.name); return serialize(b,'id name description department_id multimodal')
 
 @router.get('/documents')
 def documents(u:User=Depends(current_user),db:Session=Depends(db_session)):
@@ -105,22 +105,14 @@ def documents(u:User=Depends(current_user),db:Session=Depends(db_session)):
 
 @router.post('/documents',status_code=201)
 async def upload(background:BackgroundTasks,file:UploadFile=File(...),knowledge_base_id:str=Form(...),u:User=Depends(current_user),db:Session=Depends(db_session)):
+    from . import library
+    from .jobs import schedule_ingest
     kb=db.scalar(select(KnowledgeBase).where(KnowledgeBase.id==knowledge_base_id,KnowledgeBase.tenant_id==u.tenant_id))
     if not kb: raise HTTPException(404,'ไม่พบคลังความรู้')
-    require_kb(db,u,kb.id,True)
+    require_kb(db,u,kb.id,True)  # before the file is read, so a refused upload costs nothing
     name,data=await read_validated(file)
-    digest=hashlib.sha256(data).hexdigest()
-    existing=db.scalar(select(Document).where(Document.tenant_id==u.tenant_id,Document.sha256==digest))
-    if existing:
-        require_kb(db,u,existing.knowledge_base_id)
-        if db.scalar(select(DocumentState).where(DocumentState.document_id==existing.id,DocumentState.deleted_at!='')): raise HTTPException(409,'ไฟล์นี้อยู่ในถังขยะ กรุณากู้คืนก่อน')
-        return {'id':existing.id,'duplicate':True,'status':existing.status}
-    key=f'{u.tenant_id}/{secrets.token_hex(16)}'; storage.put(key,data)
-    d=Document(tenant_id=u.tenant_id,knowledge_base_id=kb.id,name=name,sha256=digest,size=len(data),storage_key=key)
-    db.add(d); db.commit(); audit(db,u,'อัปโหลดเอกสาร',d.name)
-    from .jobs import schedule_ingest
-    schedule_ingest(d.id,background)
-    return {'id':d.id,'status':d.status}
+    id,duplicate,status=library.add(db,u,kb.id,name,data,lambda id:schedule_ingest(id,background))
+    return {'id':id,'duplicate':True,'status':status} if duplicate else {'id':id,'status':status}
 
 @router.get('/documents/{id}')
 def preview(id:str,version:int|None=None,u:User=Depends(current_user),db:Session=Depends(db_session)):
@@ -157,12 +149,25 @@ def delete_doc(id:str,u:User=Depends(current_user),db:Session=Depends(db_session
     state.deleted_at=now();db.commit();audit(db,u,'ย้ายเอกสารไปถังขยะ',d.name);return {'ok':True}
 
 @router.get('/search')
-def knowledge_search(q:str=Query(min_length=1,max_length=2000),kb_id:str|None=None,mode:str=Query('hybrid',pattern='^(hybrid|keyword|semantic)$'),u:User=Depends(current_user),db:Session=Depends(db_session)):
-    found=search(db,u.tenant_id,q,kb_id,mode=mode,limit=50,user=u)
+def knowledge_search(q:str=Query(min_length=1,max_length=2000),kb_id:str|None=None,mode:str=Query('hybrid',pattern='^(hybrid|keyword|semantic)$'),limit:int=Query(int(os.getenv('SEARCH_CANDIDATES','20')),ge=1,le=50),per_doc:int=Query(int(os.getenv('SEARCH_PER_DOC','3')),ge=1,le=10),u:User=Depends(current_user),db:Session=Depends(db_session)):
+    """The search page. The reranker is a CPU cross-encoder, so it only judges the best `limit` candidates (50 took about 12 s, 15 takes a few seconds),
+    and a passage the reranker finds barely related (below SEARCH_MIN_SCORE) is left out of the list."""
+    floor=float(os.getenv('SEARCH_MIN_SCORE','0.03'))
+    found=[r for r in search(db,u.tenant_id,q,kb_id,mode=mode,limit=limit,user=u,per_doc=per_doc) if r.get('rerank_score',1)>=floor]
     if found:return found
     # Nothing passed the strict thresholds (typo, or another language): retry loosely and let the reranker judge.
-    floor=float(os.getenv('SEARCH_FALLBACK_MIN','0.005'))
-    return [r|{'approx':True} for r in search(db,u.tenant_id,q,kb_id,mode=mode,limit=50,user=u,relaxed=True) if r.get('rerank_score',1)>=floor][:5]
+    fallback=float(os.getenv('SEARCH_FALLBACK_MIN','0.005'))
+    return [r|{'approx':True} for r in search(db,u.tenant_id,q,kb_id,mode=mode,limit=8,user=u,relaxed=True,per_doc=2,pool=8) if r.get('rerank_score',1)>=fallback][:5]
+
+@router.get('/chunks/{id}/image')
+def chunk_image(id:str,u:User=Depends(current_user),db:Session=Depends(db_session)):
+    """The picture behind a picture chunk (a figure of a document), for the thumbnails in search results. Same access rule as the document."""
+    c=db.scalar(select(Chunk).where(Chunk.id==id,Chunk.tenant_id==u.tenant_id,Chunk.kind=='image'))
+    if not c or not c.image_key:raise HTTPException(404,'ไม่พบภาพ')
+    require_document(db,u,c.document_id)
+    try:data=storage.get(c.image_key)
+    except Exception:raise HTTPException(404,'ไม่พบภาพ')
+    return Response(content=data,media_type='image/jpeg',headers={'Cache-Control':'private, max-age=3600','Content-Disposition':'inline'})
 
 @router.get('/conversations')
 def conversations(u:User=Depends(current_user),db:Session=Depends(db_session)):
@@ -261,7 +266,8 @@ def model_list(u:User=Depends(current_user),db:Session=Depends(db_session)):
 
 @router.post('/admin/models',status_code=201)
 def add_model(body:ModelInput,u:User=Depends(admin),db:Session=Depends(db_session)):
-    m=AIModel(**body.model_dump()); db.add(m); db.commit(); audit(db,u,'เพิ่มโมเดล',m.name); return {'id':m.id}
+    from .policies import allow_new_model
+    m=AIModel(**body.model_dump()); db.add(m); db.commit(); allow_new_model(db,m); audit(db,u,'เพิ่มโมเดล',m.name); return {'id':m.id}
 
 @router.put('/admin/models/{id}')
 def update_model(id:str,body:ModelInput,u:User=Depends(admin),db:Session=Depends(db_session)):

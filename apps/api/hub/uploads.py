@@ -1,15 +1,19 @@
 import io
 from fastapi import HTTPException
 
-async def read_validated(file):
-    name=(file.filename or 'file').replace('\\','/').split('/')[-1]
+EXTENSIONS=('pdf','docx','pptx','xlsx','doc','xls','txt','md','csv','html','png','jpg','jpeg')
+
+def check_ext(name):
     ext=name.rsplit('.',1)[-1].lower()
-    if ext not in ('pdf','docx','pptx','xlsx','doc','xls','txt','md','csv','html','png','jpg','jpeg'): raise HTTPException(415,'รองรับ PDF, DOC, DOCX, PPTX, XLS, XLSX, TXT, MD, CSV, HTML, PNG และ JPG')
-    data=await file.read(20*1024*1024+1)
+    if ext not in EXTENSIONS: raise HTTPException(415,'รองรับ PDF, DOC, DOCX, PPTX, XLS, XLSX, TXT, MD, CSV, HTML, PNG และ JPG')
+    return ext
+
+def check_bytes(name,data):
+    """Size, virus scan and format checks of a file already in memory. Shared by uploads and by files the Agent saves."""
+    ext=check_ext(name)
     if not data or len(data)>20*1024*1024: raise HTTPException(413,'ขนาดไฟล์ต้องอยู่ระหว่าง 1 ไบต์ถึง 20 MB')
     from .antivirus import scan
-    from starlette.concurrency import run_in_threadpool
-    await run_in_threadpool(scan,data)
+    scan(data)
     if ext=='pdf' and not data.startswith(b'%PDF'): raise HTTPException(415,'รูปแบบ PDF ไม่ถูกต้อง')
     if ext in ('doc','xls') and not data.startswith(bytes.fromhex('d0cf11e0a1b11ae1')): raise HTTPException(415,'ไฟล์ Office รุ่นเก่าไม่ถูกต้อง')
     if ext in ('docx','pptx','xlsx'):
@@ -27,4 +31,11 @@ async def read_validated(file):
                 if image.format not in ('PNG','JPEG'):raise HTTPException(415,'รูปแบบภาพไม่ถูกต้อง')
                 image.verify()
         except (OSError,ValueError):raise HTTPException(415,'ไม่สามารถอ่านรูปภาพได้')
+
+async def read_validated(file):
+    name=(file.filename or 'file').replace('\\','/').split('/')[-1]
+    check_ext(name)
+    data=await file.read(20*1024*1024+1)
+    from starlette.concurrency import run_in_threadpool
+    await run_in_threadpool(check_bytes,name,data)
     return name,data

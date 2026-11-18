@@ -25,7 +25,8 @@ Most RAG demos stop at "embed, retrieve, prompt". This project focuses on what a
 **Search and chat**
 - Keyword (BM25), vector, and hybrid search with Reciprocal Rank Fusion, plus an optional cross-encoder reranker
 - Chat that answers from documents with citations, or talks to a general model; per-question file attachments (not indexed, virus-scanned)
-- Agent mode built on LangGraph: the model plans, calls tools (including web search), and can pause for a human clarification that survives restarts
+- Agent mode built on LangGraph: the model plans and calls tools - search and read documents, exact `calculate`, `read_table` for spreadsheets, `summarize_document` for long files, `view_figure` for charts (vision models), web search, file creation, and `save_to_library` - and pauses for a human answer or approval (a clarifying question, a web search, saving a file to a library) that survives restarts
+- Multimodal RAG (optional): charts, diagrams and scanned pages are described, embedded and searched with the text, and vision models see the picture when answering ([details](docs/multimodal-rag.md))
 - Streaming responses, Markdown and LaTeX rendering, fallback models when a provider returns 429/5xx
 - Multiple providers behind one gateway: Google AI, OpenRouter, LiteLLM, and a local Qwen model
 
@@ -109,13 +110,15 @@ make eval-answers  # answer quality with Ragas (calls a judge LLM)
 
 ```bash
 docker compose -f compose.yaml -f compose.dev.yaml up -d postgres   # exposes Postgres on 127.0.0.1 only
-make test                                                           # 214 backend tests passing
+make test                                                           # 274 backend tests passing
 cd apps/web && npm run typecheck && npm run test && npm run build
 docker compose exec -T api python -m hub.integration_check          # real Postgres, S3, Qdrant, Celery
 docker compose exec -T api python -m hub.rls_check                  # verifies row-level security
 ```
 
+- **Browser tests of the search page** (real Chromium, 15 checks: Thai and English questions, the three modes, library and file-type filters, empty state, picture thumbnails, preview, phone width): `npm i --no-save playwright && npx playwright install chromium`, then `E2E_EMAIL=member@local.test E2E_PASSWORD=... node apps/web/e2e/search.e2e.mjs` against the running stack (`make e2e`).
 - Backend tests run against a throwaway database and cover tenant isolation, ACLs and revocation, upload validation, ingestion recovery, backups, provider protocols (mocked HTTP) and Langfuse tracing.
+- **Answer quality with DeepEval** (`make eval-deepeval`, calls a judge LLM): scores whether answers are grounded in the retrieved passages (faithfulness) and whether each `[n]` citation points at a passage that supports the sentence. Add `ARGS="--min-faithfulness 0.8 --min-citation 0.7"` to make it a gate. It runs in its own `.venv-eval` ([setup](apps/api/eval/deepeval_run.py)), sends only the sample corpus to the judge, and has DeepEval telemetry switched off. Verified to separate good answers (faithfulness 1.0, citation 1.0) from hallucinated or wrongly cited ones (0.0).
 - The retrieval evaluation (`apps/api/eval`) indexes a corpus through the real pipeline and scores 125 questions with **hit@1, hit@k, MRR and doc@k** for each search mode. It calls no LLM and nothing leaves the machine.
 
 ## Project structure
@@ -126,7 +129,7 @@ docker compose exec -T api python -m hub.rls_check                  # verifies r
 <summary>Plain-text tree</summary>
 
 ```text
-apps/web/              Next.js App Router frontend (Thai UI)
+apps/web/              Next.js App Router frontend (Thai and English UI)
 apps/api/hub/          FastAPI app: auth, ingestion, retrieval, chat, agent, admin, backups
 apps/api/migrations/   Alembic migrations
 apps/api/eval/         Retrieval and answer-quality evaluation

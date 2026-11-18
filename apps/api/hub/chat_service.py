@@ -10,9 +10,13 @@ from .models import Organization,Conversation,Message,Usage,Audit,uid
 from .feature_models import ModelPolicy,UserPreference
 from .policies import choose_model,available_models,enforce_user_quota,month_spend
 from .retrieval import search
-from . import gateway, savings
+from . import gateway, savings, multimodal
 
 ATTACH_STORE_CHARS=60000
+def evidence_chunks():
+    """Passages sent to the model with each question (CHAT_EVIDENCE_CHUNKS, default 3). Measured on eval/questions.jsonl: 3 find the answer as often as 4 and cost a quarter fewer tokens."""
+    return max(1,min(10,int(os.getenv('CHAT_EVIDENCE_CHUNKS','3'))))
+
 def attachment_key(u,id):return f'{u.tenant_id}/chat-attachments/{u.id}/{id}'
 
 def load_attachments(u,ids):
@@ -62,7 +66,7 @@ async def web_prepare(client,url,key,used,messages,max_out,start,status):
     if used['provider']=='Local LLM':return await forced()
     for _ in range(websearch.MAX_SEARCHES+1):
         status('โมเดลกำลังวางแผนการค้นเว็บ' if _==0 else 'โมเดลกำลังอ่านผลการค้นหา')
-        payload={'model':used['api_id'],'messages':msgs,'max_tokens':max_out,**gateway.effort_params(used)}
+        payload={'model':used['api_id'],'messages':msgs,'max_tokens':max_out,**gateway.effort_params(used),**gateway.routing(used.get('provider'),url)}
         if _<websearch.MAX_SEARCHES:payload['tools']=[websearch.TOOL];payload['tool_choice']='required' if _==0 else 'auto'  # the user switched web search on: search at least once, the model picks the query
         r=await client.post(url+'/chat/completions',headers=gateway.headers(key),json=payload)
         if r.status_code in (400,404,422,500):return await forced()  # model/server without tool calling
@@ -144,7 +148,7 @@ async def _chat_response(body,request,u,db):
         run=agent_store.waiting(db,u,c.id)
         if run:
             if run.pending.get('kind')=='question':agent_resume={'answer':body.question}
-            elif body.agent_decision:agent_resume={'approve':body.agent_decision=='approve' and web_policy!='off'}  # an approval given after the organisation switched web search off is a denial
+            elif body.agent_decision:agent_resume={'approve':body.agent_decision=='approve' and (run.pending.get('tool')!='web_search' or web_policy!='off')}  # an approval to search given after the organisation switched web search off is a denial
             if agent_resume is None:agent_store.forget(run.id,db)  # the user moved on instead of deciding: drop the waiting run
             else:agent_thread=run.id
     attachments=await run_in_threadpool(load_attachments,u,body.attachment_ids)
@@ -153,7 +157,7 @@ async def _chat_response(body,request,u,db):
         from .skills import visible
         skill=visible(db,u,body.skill_id);skill.uses+=1
     # Embedding, BM25 and reranking are CPU-bound: run them in a worker thread so other requests keep being served.
-    found=await run_in_threadpool(search,db,u.tenant_id,body.question,body.knowledge_base_id,body.document_ids,limit=4,user=u) if body.use_documents and not agent else []
+    found=await run_in_threadpool(search,db,u.tenant_id,body.question,body.knowledge_base_id,body.document_ids,limit=evidence_chunks(),user=u) if body.use_documents and not agent else []
     # Keep only evidence close to the best match so fewer tokens are sent.
     if len(found)>1 and not any('rerank_score' in r for r in found):found=[r for i,r in enumerate(found) if i==0 or r['score']>=found[0]['score']*.4]
     previous=db.scalars(select(Message).where(Message.conversation_id==c.id,Message.tenant_id==u.tenant_id).order_by(Message.created_at.desc()).limit(sp['history_messages'])).all() if sp['history_messages'] else []
@@ -168,6 +172,11 @@ async def _chat_response(body,request,u,db):
         if routed:
             model=routed;savings.record_event(u.tenant_id,u.id,'route',0,routed.name)
     citations=[{**r,'number':i+1} for i,r in enumerate(found)]
+    pictures=[]  # level 3 of multimodal RAG: picture chunks the answering model gets to see, not just their description
+    if found and not agent and not web:
+        if multimodal.enabled():
+            refs=multimodal.image_refs(db,found)
+            pictures=await run_in_threadpool(multimodal.load_images,refs) if refs else []
     tenant,user_id,actor=u.tenant_id,u.id,u.name
     context=chr(10).join(f'[{i+1}] {r["name"]}, หน้า {r["page"]}'+chr(10)+r["snippet"]+chr(10) for i,r in enumerate(found))
     attached=''.join(f'[ไฟล์แนบ: {a["name"]}]'+chr(10)+a['text']+(chr(10)+'(ตัดข้อความส่วนท้ายเนื่องจากยาวเกินไป)' if a['cut'] else '')+chr(10)+chr(10) for a in attachments)
@@ -205,7 +214,7 @@ async def _chat_response(body,request,u,db):
     trace=ChatTrace(question=body.question,user_id=user_id,tenant_id=tenant,conversation_id=conversation_id,found=found,knowledge_base_id=body.knowledge_base_id,agent=agent,web=web)
 
     async def generate():
-        answer='';thought=ThoughtFilter();web_found=[];made=[];paused=[];input_tokens=output_tokens=0;reported=False;complete=False;error='';used=snapshots[0]
+        answer='';thought=ThoughtFilter();web_found=[];made=[];paused=[];input_tokens=output_tokens=0;reported=False;complete=False;error='';used=snapshots[0];finish_seen=None;keys_seen=set()
         try:
             yield event('meta',conversation_id=conversation_id,message_id=assistant_id,citations=citations)
             if found or attachments:yield event('status',text=('อ่านไฟล์แนบ '+str(len(attachments))+' ไฟล์ ' if attachments else '')+(f'พบ {len(found)} แหล่งในเอกสาร ' if found else '')+'กำลังส่งให้โมเดล')
@@ -220,6 +229,8 @@ async def _chat_response(body,request,u,db):
             else:
                 for index,candidate in enumerate(snapshots):
                     used=candidate;thought=ThoughtFilter();url,key=candidate['endpoint'];send=messages;direct=None;web_found=[]
+                    if pictures and not (web or agent) and await run_in_threadpool(multimodal.supports_vision,candidate):
+                        send=multimodal.with_images(messages,pictures);yield event('status',text=f'ส่งภาพ {len(pictures)} ภาพให้โมเดลดูประกอบ')
                     try:
                         async with httpx.AsyncClient(timeout=httpx.Timeout(90,connect=15)) as client:
                             if web or agent:
@@ -249,7 +260,7 @@ async def _chat_response(body,request,u,db):
                                     answer+=links;yield event('delta',text=links)
                                 complete=True;break
                             yield event('status',text='กำลังเรียบเรียงคำตอบ')
-                            async with client.stream('POST',url+'/chat/completions',headers=gateway.headers(key),json={'model':used['api_id'],'messages':savings.apply_prompt_cache(send,used['api_id']),'max_tokens':max_out,**gateway.effort_params(used),'stream':True,'stream_options':{'include_usage':True}}) as r:
+                            async with client.stream('POST',url+'/chat/completions',headers=gateway.headers(key),json={'model':used['api_id'],'messages':savings.apply_prompt_cache(send,used['api_id']),'max_tokens':max_out,**gateway.effort_params(used),**gateway.routing(used.get('provider'),url),'stream':True,'stream_options':{'include_usage':True}}) as r:
                                 r.raise_for_status()
                                 if 'application/json' in r.headers.get('content-type',''):
                                     payload=json.loads(await r.aread());text=thought.feed(payload['choices'][0]['message']['content'])+thought.flush();actual=payload.get('usage',{})
@@ -266,6 +277,7 @@ async def _chat_response(body,request,u,db):
                                         actual=part.get('usage')
                                         if actual:input_tokens=actual.get('prompt_tokens',0);output_tokens=actual.get('completion_tokens',0);reported=True
                                         for choice in part.get('choices',[]):
+                                            keys_seen.update(choice.get('delta',{}).keys());finish_seen=choice.get('finish_reason') or finish_seen
                                             text=thought.feed(choice.get('delta',{}).get('content') or '')
                                             if text:answer+=text;yield event('delta',text=text)
                                 tail=thought.flush()
@@ -275,14 +287,15 @@ async def _chat_response(body,request,u,db):
                         if answer or index==len(snapshots)-1:raise
                         yield event('status',text='กำลังลองโมเดลสำรองที่องค์กรอนุญาต')
                         await asyncio.sleep(.25)
-                if not answer:raise ValueError('Empty provider response')
+                if not answer:raise ValueError(f'Empty provider response (finish={finish_seen}, delta keys={sorted(keys_seen)}, output tokens={output_tokens})')
             if complete and answer and body.use_documents and found:  # re-point [n] markers at the passages that really support each statement (also for cached answers)
                 from .cite_check import verify
                 checked=verify(answer,[r['snippet'] for r in found],len(citations)+len(web_found))
                 if checked!=answer:answer=checked;yield event('replace',text=answer)
         except asyncio.CancelledError:
             error='ผู้ใช้หยุดแสดงคำตอบ';raise
-        except Exception:
+        except Exception as e:
+            import logging;logging.getLogger('hub.chat').warning('chat model call failed (%s): %s',used.get('api_id'),repr(e)[:300],exc_info=True)
             error='เรียกโมเดลไม่สำเร็จ กรุณาตรวจ Gateway หรือเลือกโมเดลอื่น'
             yield event('error',message=error)
         finally:

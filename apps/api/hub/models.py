@@ -50,6 +50,7 @@ class KnowledgeBase(Identity, Base):
     tenant_id: Mapped[str] = mapped_column(ForeignKey('organizations.id'), index=True)
     name: Mapped[str]
     description: Mapped[str] = mapped_column(default='')
+    multimodal: Mapped[bool] = mapped_column(default=False, server_default='false')  # Multimodal RAG for this library: pictures in its documents are described and embedded (sent to Google AI)
     department_id: Mapped[str] = mapped_column(default='', server_default='', index=True)  # the department (access group of kind 'department') that owns and manages it; '' = the organisation
 
 class Document(Identity, Base):
@@ -73,6 +74,9 @@ class Chunk(Identity, Base):
     text: Mapped[str] = mapped_column(Text)
     embedding: Mapped[list] = mapped_column(JSON, default=list)
     embedding_version: Mapped[str] = mapped_column(default='hash-ngram-v1-256')
+    kind: Mapped[str] = mapped_column(default='text', server_default='text')  # 'text', or 'image': a picture whose text is a vision-model description
+    image_key: Mapped[str] = mapped_column(default='', server_default='')  # object-storage key of the picture (kind='image')
+    mm_embedding: Mapped[list] = mapped_column(JSON, default=list, server_default='[]')  # multimodal vector of the picture itself
 
 class Conversation(Identity, Base):
     __tablename__ = 'conversations'
