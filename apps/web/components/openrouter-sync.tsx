@@ -65,12 +65,12 @@ export function OpenRouterPanel({ notify }: { notify: Notify }) {
 
   return (
     <section className="card padded feature-section">
-      <div className="section-heading">
+      <div className="section-heading price-sync-heading">
         <h2><RefreshCw size={18} />{tr('ราคาโมเดลจาก OpenRouter')}</h2>
         <span className="small muted">{tr('โมเดลข้อความ: ราคาต่อ 1 ล้านโทเคน (USD) · โมเดลภาพ/วิดีโอ: ราคาอ้างอิงต่อภาพหรือต่อวินาที ตามที่ OpenRouter ประกาศ ยอดจริงอาจต่างเล็กน้อยตามผู้ให้บริการปลายทาง')}</span>
       </div>
       <div className="stack">
-        <label className="inline-actions" style={{ alignItems: 'center', gap: 8 }}>
+        <label className="check-label price-sync-toggle">
           <input type="checkbox" checked={!!s?.auto} disabled={busy || !s} onChange={toggleAuto} aria-label={tr('ซิงก์ราคาอัตโนมัติทุก 5 นาที')} />
           <span>{tr('ซิงก์ราคาอัตโนมัติทุก 5 นาที')}</span>
         </label>

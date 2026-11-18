@@ -47,6 +47,15 @@ def available_models(db,u,category=None):
     if policy:stmt=stmt.where(AIModel.id.in_(policy.allowed_models))
     return db.scalars(stmt).all()
 
+def allow_new_model(db,model):
+    """A tenant policy lists the models an organisation may use. One that already lists every model was meant to allow
+    them all, so a model registered later joins it; a deliberately narrower list is left alone."""
+    from .feature_models import ModelPolicy as Policy
+    others=set(db.scalars(select(AIModel.id)))-{model.id}
+    for p in db.scalars(select(Policy)):
+        if others<=set(p.allowed_models) and model.id not in p.allowed_models:p.allowed_models=[*p.allowed_models,model.id]
+    db.commit()
+
 def usable(db,m):
     from . import gateway
     return gateway.configured(db,m.provider)

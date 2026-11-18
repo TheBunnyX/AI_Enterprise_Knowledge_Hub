@@ -8,6 +8,7 @@ class KBCreate(BaseModel):
     name: str = Field(min_length=1,max_length=100)
     description: str = Field(default='',max_length=500)
     department_id: str = Field(default='',max_length=36)  # '' = the creator's own department (a Super Admin may leave it unset)
+    multimodal: bool = False  # describe and embed the pictures in this library's documents (sent to Google AI)
 class ChatInput(BaseModel):
     question: str = Field(min_length=1,max_length=6000)
     conversation_id: str | None = None

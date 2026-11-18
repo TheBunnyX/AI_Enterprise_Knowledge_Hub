@@ -1,11 +1,10 @@
 'use client';
 import { useMemo, useState } from 'react';
-import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { ArrowRight, Boxes, Building2, ChartNoAxesCombined, CircleHelp, Coins, Database, Download, FileText, HardDrive, Library, MessagesSquare, Search, Users, Zap, type LucideIcon } from 'lucide-react';
+import { Boxes, ChartNoAxesCombined, Coins, Database, Download, FileText, HardDrive, Library, MessagesSquare, Search, Users, Zap, type LucideIcon } from 'lucide-react';
 import { tr, useLang } from '../lib/i18n';
-import { api, date, fmt, money, type Analytics, type Audit, type Org } from './api';
+import { api, date, fmt, money, money4, type Analytics, type Audit } from './api';
 import { BudgetNotice } from './features';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -15,30 +14,29 @@ import { Sel } from './ui/sel';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { cn } from '../lib/utils';
 
-const COLORS = ['#2877ff', '#8b5cf6', '#2dd4bf', '#ffad47', '#f43f5e', '#64748b'];
-const SERIES = { requests: { get label() { return tr('คำถาม'); }, color: '#2877ff' }, cost: { get label() { return tr('ค่าใช้จ่าย (USD)'); }, color: '#ffad47' }, tokens: { get label() { return tr('โทเคน'); }, color: '#8b5cf6' } } as const;
-type Series = keyof typeof SERIES;
-const bytes = (n = 0) => (n >= 1 << 30 ? (n / (1 << 30)).toFixed(2) + ' GB' : n >= 1 << 20 ? (n / (1 << 20)).toFixed(1) + ' MB' : n >= 1024 ? (n / 1024).toFixed(0) + ' KB' : n + ' B');
-const price = (n = 0) => (n > 0 && n < 0.01 ? '<$0.01' : money(n));
-const STATUS: Record<string, string> = { ready: 'พร้อมใช้งาน', processing: 'กำลังประมวลผล', failed: 'ล้มเหลว', pending: 'รอดำเนินการ', quarantined: 'กักกัน' };
+export const COLORS = ['#2877ff', '#8b5cf6', '#2dd4bf', '#ffad47', '#f43f5e', '#64748b'];
+export const SERIES = { requests: { get label() { return tr('คำถาม'); }, color: '#2877ff' }, cost: { get label() { return tr('ค่าใช้จ่าย (USD)'); }, color: '#ffad47' }, tokens: { get label() { return tr('โทเคน'); }, color: '#8b5cf6' } } as const;
+export type Series = keyof typeof SERIES;
+export const bytes = (n = 0) => (n >= 1 << 30 ? (n / (1 << 30)).toFixed(2) + ' GB' : n >= 1 << 20 ? (n / (1 << 20)).toFixed(1) + ' MB' : n >= 1024 ? (n / 1024).toFixed(0) + ' KB' : n + ' B');
+export const price = (n = 0) => (n > 0 && n < 0.01 ? '<$0.01' : money(n));
+export const STATUS: Record<string, string> = { ready: 'พร้อมใช้งาน', processing: 'กำลังประมวลผล', failed: 'ล้มเหลว', pending: 'รอดำเนินการ', quarantined: 'กักกัน' };
 
-function Stat({ icon: Icon, title, value, note, tone = 'text-primary bg-primary/10' }: { icon: LucideIcon; title: string; value: string; note?: string; tone?: string }) {
+export function Stat({ icon: Icon, title, value, note, tone = 'text-primary bg-primary/10' }: { icon: LucideIcon; title: string; value: string; note?: string; tone?: string }) {
   return <Card className="gap-0 py-4"><CardContent className="flex items-center gap-3 px-4">
     <span className={cn('grid size-11 shrink-0 place-items-center rounded-2xl', tone)}><Icon className="size-5" /></span>
     <div className="min-w-0"><p className="text-sm text-muted-foreground">{title}</p><strong className="block truncate text-xl leading-tight">{value}</strong>{note && <small className="block truncate text-xs text-muted-foreground">{note}</small>}</div>
   </CardContent></Card>;
 }
 
-function Blank({ icon: Icon, title, text }: { icon: LucideIcon; title: string; text: string }) {
+export function Blank({ icon: Icon, title, text }: { icon: LucideIcon; title: string; text: string }) {
   return <div className="flex flex-col items-center gap-1 py-10 text-center text-muted-foreground"><Icon className="size-9" strokeWidth={1.3} /><strong className="text-foreground">{title}</strong><p className="text-sm">{text}</p></div>;
 }
 
-export function AnalyticsPage({ data, admin, audit, overview }: { data?: Analytics; admin: boolean; audit: Audit[]; overview: boolean }) {
+export function AnalyticsPage({ data, audit }: { data?: Analytics; audit: Audit[] }) {
   const { lang } = useLang();
-  const [days, setDays] = useState('30'); const [tenant, setTenant] = useState(''); const [series, setSeries] = useState<Series>(admin && !overview ? 'cost' : 'requests');
+  const [days, setDays] = useState('30'); const [series, setSeries] = useState<Series>('requests');
   const [find, setFind] = useState(''); const [rows, setRows] = useState(10);
-  const orgs = useQuery({ queryKey: ['orgs'], queryFn: () => api<Org[]>('/admin/organizations'), enabled: admin });
-  const q = useQuery({ queryKey: ['analytics-filtered', days, tenant, admin], queryFn: () => api<Analytics>(`/analytics?days=${days}${tenant ? '&tenant_id=' + tenant : ''}`) });
+  const q = useQuery({ queryKey: ['analytics-filtered', days], queryFn: () => api<Analytics>(`/analytics?days=${days}`) });
   const a = q.data || data;
   const daily = useMemo(() => (a?.daily || []).map((d) => ({ ...d, tokens: (d.input_tokens || 0) + (d.output_tokens || 0) })), [a]);
   const modelShare = useMemo(() => {
@@ -50,23 +48,21 @@ export function AnalyticsPage({ data, admin, audit, overview }: { data?: Analyti
   const tokens = (a?.input_tokens || 0) + (a?.output_tokens || 0);
   const active = daily.filter((d) => d.requests).length;
   const events = useMemo(() => audit.filter((e) => !find.trim() || `${e.actor} ${e.action} ${e.detail} ${e.ip||''}`.toLowerCase().includes(find.trim().toLowerCase())), [audit, find]);
-  const costView = admin && !overview;
   const statuses = Object.entries(a?.document_status || {});
   const s = SERIES[series];
 
   return <>
     <div className="page-heading">
-      <div><h1>{overview ? tr('สวัสดีครับ, Super Admin 👋') : admin ? tr('การใช้งานและค่าใช้จ่าย') : tr('รายงานและสถิติ')}</h1><p>{overview ? tr('ภาพรวม AI Knowledge Hub และการใช้งานของทุกองค์กร') : tr('ติดตามการใช้งาน AI และค่าใช้จ่ายที่บันทึกจากระบบจริง')}</p></div>
+      <div><h1>{tr('รายงานและสถิติ')}</h1><p>{tr('ติดตามการใช้งาน AI และค่าใช้จ่ายที่บันทึกจากระบบจริง')}</p></div>
       <div className="flex flex-wrap items-center gap-2">
-        {admin && <Sel aria-label={tr('เลือกองค์กร')} value={tenant} onChange={(e) => setTenant(e.target.value)} className="w-52"><option value="">{tr('ทุกองค์กร')}</option>{orgs.data?.map((o) => <option value={o.id} key={o.id}>{o.name}</option>)}</Sel>}
         <Sel aria-label={tr('ช่วงเวลา')} value={days} onChange={(e) => setDays(e.target.value)} className="w-44"><option value="7">{tr('7 วันที่ผ่านมา')}</option><option value="30">{tr('30 วันที่ผ่านมา')}</option><option value="90">{tr('90 วันที่ผ่านมา')}</option><option value="365">{tr('1 ปีที่ผ่านมา')}</option></Sel>
-        {!overview && <Button asChild variant="outline"><a href={`/api/usage/export?days=${days}${tenant ? '&tenant_id=' + tenant : ''}`}><Download className="size-4" />{tr('ส่งออก CSV')}</a></Button>}
+        <Button asChild variant="outline"><a href={`/api/usage/export?days=${days}`}><Download className="size-4" />{tr('ส่งออก CSV')}</a></Button>
       </div>
     </div>
     <BudgetNotice />
 
     <div className="stats-grid" data-testid="stats">
-      <Stat icon={overview ? Building2 : Users} title={overview ? tr('องค์กรทั้งหมด') : tr('ผู้ใช้งาน')} value={fmt(overview ? a?.organizations : a?.users)} />
+      <Stat icon={Users} title={tr('ผู้ใช้งาน')} value={fmt(a?.users)} />
       <Stat icon={MessagesSquare} title={tr('จำนวนคำถาม')} value={fmt(a?.requests)} note={tr('ใช้งาน {active} จาก {v2} วัน',{active,v2:daily.length})} tone="text-teal-600 bg-teal-500/10" />
       <Stat icon={FileText} title={tr('เอกสารในระบบ')} value={fmt(a?.documents)} note={tr('พื้นที่ {v1}',{v1:bytes(a?.storage_bytes)})} tone="text-violet-600 bg-violet-500/10" />
       <Stat icon={Coins} title={tr('ค่าใช้จ่าย AI (USD)')} value={money(a?.cost)} note={a?.estimated ? tr('ประมาณการตามราคาที่กำหนด') : tr('ค่าใช้จ่ายที่บันทึกจริง')} tone="text-orange-600 bg-orange-500/10" />
@@ -114,7 +110,7 @@ export function AnalyticsPage({ data, admin, audit, overview }: { data?: Analyti
         <CardHeader><CardTitle>{tr('การใช้งานแยกตามโมเดล')}</CardTitle><CardDescription>{tr('คำถาม โทเคน และค่าใช้จ่ายของแต่ละโมเดล')}</CardDescription></CardHeader>
         <CardContent>
           {a?.model_rows?.length ? <Table><TableHeader><TableRow><TableHead>{tr('โมเดล')}</TableHead><TableHead className="text-right">{tr('คำถาม')}</TableHead><TableHead className="text-right">{tr('โทเคนเข้า')}</TableHead><TableHead className="text-right">{tr('โทเคนออก')}</TableHead><TableHead className="text-right">{tr('ค่าใช้จ่าย')}</TableHead></TableRow></TableHeader>
-            <TableBody>{a.model_rows.map((m) => <TableRow key={m.name}><TableCell className="max-w-56 truncate font-medium">{m.name}</TableCell><TableCell className="text-right">{fmt(m.requests)}</TableCell><TableCell className="text-right">{fmt(m.input_tokens)}</TableCell><TableCell className="text-right">{fmt(m.output_tokens)}</TableCell><TableCell className="text-right">{price(m.cost)}</TableCell></TableRow>)}</TableBody></Table>
+            <TableBody>{a.model_rows.map((m) => <TableRow key={m.name}><TableCell className="max-w-56 truncate font-medium">{m.name}</TableCell><TableCell className="text-right">{fmt(m.requests)}</TableCell><TableCell className="text-right">{fmt(m.input_tokens)}</TableCell><TableCell className="text-right">{fmt(m.output_tokens)}</TableCell><TableCell className="text-right tabular-nums">{money4(m.cost)}</TableCell></TableRow>)}</TableBody></Table>
             : <Blank icon={Boxes} title={tr('ยังไม่มีข้อมูลโมเดล')} text={tr('ตารางจะแสดงเมื่อมีการเรียกใช้')} />}
         </CardContent>
       </Card>
@@ -149,15 +145,5 @@ export function AnalyticsPage({ data, admin, audit, overview }: { data?: Analyti
         </> : <Blank icon={Search} title={audit.length ? tr('ไม่พบกิจกรรมที่ค้นหา') : tr('ยังไม่มีกิจกรรม')} text={audit.length ? tr('ลองใช้คำค้นอื่น') : tr('กิจกรรมจะแสดงเมื่อมีการใช้งาน')} />}
       </CardContent>
     </Card>
-
-    {overview && <div className="dashboard-columns">
-      <Card>
-        <CardHeader className="flex-row items-center justify-between"><div><CardTitle>{tr('องค์กรในระบบ')}</CardTitle><CardDescription>{tr('{v1} องค์กร',{v1:fmt(orgs.data?.length)})}</CardDescription></div><Button asChild variant="ghost" size="sm"><Link href="/super-admin/organizations">{tr('จัดการองค์กร')}<ArrowRight className="size-4" /></Link></Button></CardHeader>
-        <CardContent>
-          <Table><TableHeader><TableRow><TableHead>{tr('องค์กร')}</TableHead><TableHead className="text-right">{tr('ผู้ใช้')}</TableHead><TableHead className="text-right">{tr('เอกสาร')}</TableHead><TableHead className="text-right">{tr('ค่าใช้จ่าย')}</TableHead><TableHead>{tr('สถานะ')}</TableHead></TableRow></TableHeader>
-            <TableBody>{orgs.data?.slice(0, 8).map((o) => <TableRow key={o.id}><TableCell className="font-medium">{o.name}</TableCell><TableCell className="text-right">{fmt(o.users)}</TableCell><TableCell className="text-right">{fmt(o.documents)}</TableCell><TableCell className="text-right">{price(o.cost)}</TableCell><TableCell><Badge variant={o.status === 'active' ? 'secondary' : 'outline'}>{o.status === 'active' ? tr('ใช้งาน') : o.status}</Badge></TableCell></TableRow>)}</TableBody></Table>
-        </CardContent>
-      </Card>
-    </div>}
   </>;
 }

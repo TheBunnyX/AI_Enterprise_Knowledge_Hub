@@ -209,4 +209,6 @@ async def add_from_catalog(body:AddInput,u=Depends(admin),db:Session=Depends(db_
         m=AIModel(name=(body.name or c['name'])[:100],provider=PROVIDER,api_id=c['id'],category='LLM',enabled=body.enabled,input_price=c['input_price'] or 0,output_price=c['output_price'] or 0)
         variable=c['input_price'] is None or c['output_price'] is None
     db.add(m);db.add(Audit(tenant_id=u.tenant_id,user_id=u.id,actor=u.name,action='เพิ่มโมเดลจาก OpenRouter',detail=m.name));db.commit()
+    from .policies import allow_new_model
+    allow_new_model(db,m)
     return {'id':m.id,'name':m.name,'variable_price':variable}

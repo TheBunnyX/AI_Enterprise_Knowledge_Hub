@@ -76,3 +76,39 @@ export function groupModels<T extends { api_id?: string; name?: string; display_
     .sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b))
     .map(([label, items]) => ({ label, items: [...items].sort((x, y) => (y.output_price ?? 0) - (x.output_price ?? 0) || (y.input_price ?? 0) - (x.input_price ?? 0) || (x.display_name || x.name || '').localeCompare(y.display_name || y.name || '', 'th', { numeric: true, sensitivity: 'base' })) }));
 }
+
+const usd = (n: number) => '$' + (n >= 10 ? +n.toFixed(1) : n >= 1 ? +n.toFixed(2) : +n.toPrecision(2));
+
+/** What a model costs, in the unit that fits its kind: images per picture, video per second, text/audio models per 1M units (input / output). */
+export function priceText(m: { category?: string; provider?: string; input_price?: number; output_price?: number }): string {
+  const input = m.input_price || 0, output = m.output_price || 0;
+  if (m.provider === 'Local LLM') return tr('ฟรี (รันในเครื่อง)');
+  if (m.category === 'Image') return output > 0 ? tr('{p} / ภาพ', { p: usd(output) }) : tr('ไม่ระบุราคา');
+  if (m.category === 'Video') return output > 0 ? tr('{p} / วินาที', { p: usd(output) }) : tr('ไม่ระบุราคา');
+  if (!input && !output) return tr('ไม่ระบุราคา');
+  return tr('{i} เข้า / {o} ออก ต่อ 1M', { i: usd(input), o: usd(output) });
+}
+
+/** Price tag shown next to a model in lists. */
+export function ModelPrice({ m, className = '' }: { m: { category?: string; provider?: string; input_price?: number; output_price?: number }; className?: string }) {
+  return <span className={'whitespace-nowrap text-xs text-muted-foreground ' + className}>{priceText(m)}</span>;
+}
+
+/** Google makes models that can be reached two ways: straight through a Google AI Studio key, or through OpenRouter. Says which one a Google model is. */
+export function sourceTag(m: { provider?: string; api_id?: string }): string {
+  if (m.provider === 'Google AI') return 'Google AI Studio';
+  if (m.provider === 'OpenRouter' && /^google\//i.test(m.api_id || '')) return 'OpenRouter';
+  return '';
+}
+
+/** Name for plain <option> lists, with the source of a Google model after it. */
+export function modelTitle(m: { display_name?: string; name?: string; provider?: string; api_id?: string }): string {
+  const tag = sourceTag(m);
+  return (m.display_name || m.name || '') + (tag ? ' · ' + tag : '');
+}
+
+/** Small badge for the source of a Google model; nothing for other models. */
+export function SourceBadge({ m }: { m: { provider?: string; api_id?: string } }) {
+  const tag = sourceTag(m);
+  return tag ? <span className="ml-1.5 shrink-0 rounded border border-border px-1 text-[10px] font-medium leading-4 text-muted-foreground">{tag}</span> : null;
+}

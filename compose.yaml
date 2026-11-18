@@ -26,6 +26,7 @@ x-api-env: &api-env
   SECRETS_KEY: ${SECRETS_KEY:-}
   GOOGLE_AI_API_KEY: ${GOOGLE_AI_API_KEY:-}
   OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+  OPENROUTER_SORT: ${OPENROUTER_SORT:-price}  # which company serves a model first: price (cheapest), throughput, latency; empty = OpenRouter default
   MEDIA_DOWNLOAD_HOSTS: ${MEDIA_DOWNLOAD_HOSTS:-}
   EMBEDDING_MODEL: ${EMBEDDING_MODEL:-}
   EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-1536}
@@ -33,13 +34,24 @@ x-api-env: &api-env
   EMBEDDING_MAX_TOKENS: ${EMBEDDING_MAX_TOKENS:-0}
   EMBEDDING_BATCH_SIZE: ${EMBEDDING_BATCH_SIZE:-32}
   RERANK_MODEL: ${RERANK_MODEL:-}
-  RERANK_MIN_SCORE: ${RERANK_MIN_SCORE:-0}
+  RERANK_MIN_SCORE: ${RERANK_MIN_SCORE:-0.01}
+  MULTIMODAL_RAG: ${MULTIMODAL_RAG:-false}  # pictures and questions go to Google AI when on
+  MM_CAPTION_MODEL: ${MM_CAPTION_MODEL:-gemini-3.5-flash-lite}
+  MM_EMBED_MODEL: ${MM_EMBED_MODEL:-gemini-embedding-2}
+  MM_EMBED_DIMS: ${MM_EMBED_DIMS:-768}
+  MM_MAX_IMAGES: ${MM_MAX_IMAGES:-12}
+  MM_MIN_SCORE: ${MM_MIN_SCORE:-0.38}
+  MM_ANSWER_IMAGES: ${MM_ANSWER_IMAGES:-2}
   ONNX_RERANK_BATCH_SIZE: ${ONNX_RERANK_BATCH_SIZE:-2}  # small batches keep the cross-encoder's peak memory low (Docker Desktop VMs often have only 4 GB)
   ONNX_THREADS: ${ONNX_THREADS:-2}
   OCR_LANGUAGES: ${OCR_LANGUAGES:-tha+eng}
   CHAT_ATTACHMENT_CHARS: ${CHAT_ATTACHMENT_CHARS:-12000}
   CHAT_ATTACHMENT_HOURS: ${CHAT_ATTACHMENT_HOURS:-24}
   AGENT_MAX_TOKENS: ${AGENT_MAX_TOKENS:-60000}
+  CHAT_EVIDENCE_CHUNKS: ${CHAT_EVIDENCE_CHUNKS:-3}  # passages sent to the model per question
+  SEARCH_CANDIDATES: ${SEARCH_CANDIDATES:-20}  # passages the reranker judges for the search page (a CPU model: 50 took about 12 s, 20 about 5 s and keeps every document of the 50-passage list)
+  SEARCH_PER_DOC: ${SEARCH_PER_DOC:-3}  # most passages of one document sent to the reranker for the search page
+  SEARCH_MIN_SCORE: ${SEARCH_MIN_SCORE:-0.03}  # search results the reranker finds barely related are hidden
   LOCAL_LLM_URL: ${LOCAL_LLM_URL:-http://llm-local:8080/v1}
   CLAMAV_HOST: clamav
   CLAMAV_PORT: '3310'

@@ -165,8 +165,10 @@ def run_job(id):
                 from . import google_audio
                 text=google_audio.transcribe(google_audio.base_url(url),key,api_id,storage.get(input_key),google_audio.audio_mime(input_name),options.get('language','th'));output=text.encode();output_type='text/plain; charset=utf-8'
             elif kind=='tts':
-                r=client.post(url+'/audio/speech',json={'model':api_id,'input':prompt,'voice':options.get('voice','alloy'),'speed':options.get('speed',1),'response_format':'mp3'})
-                r.raise_for_status();output=r.content;output_type='audio/mpeg'
+                from . import google_audio
+                payload,output_type,convert=google_audio.openrouter_speech(api_id,prompt,options.get('voice',''),options.get('speed',1))
+                r=client.post(url+'/audio/speech',json=payload)
+                r.raise_for_status();output=convert(r.content) if convert and r.content else r.content
             elif kind=='stt':
                 r=client.post(url+'/audio/transcriptions',data={'model':api_id},files={'file':(input_name,storage.get(input_key),'application/octet-stream')})
                 r.raise_for_status();text=r.json()['text'];output=text.encode();output_type='text/plain; charset=utf-8'

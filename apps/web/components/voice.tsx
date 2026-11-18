@@ -11,6 +11,7 @@ import {H1} from './page-title';
 import {VoicePicker,DEFAULT_VOICE} from './voice-picker';
 import {useLiveVoice} from './voice-live';
 import {VoiceOrb} from './voice-orb';
+import { modelTitle, priceText } from './model-icon';
 
 type Notify=(s:string)=>void;
 type Phase='idle'|'listening'|'hearing'|'thinking'|'speaking';
@@ -211,7 +212,7 @@ export function VoicePage({kbs,notify}:{kbs:KB[];notify:Notify}){
   </section>
   <section className="card padded order-2 grid gap-3 lg:col-start-2" aria-label={tr('ตั้งค่าการสนทนา')}><h2 className="text-sm font-semibold">{tr('ตั้งค่า')}</h2>
    <div className="grid gap-2.5 [&_select]:w-full">
-    {liveModels.length>0&&<Sel aria-label={tr('เลือกเอนจินเสียง')} value={engine} disabled={on} onChange={ev=>pickEngine(ev.target.value)} className="w-full">{liveModels.map(m=><option key={m.id} value={m.id}>{tr('{name} · สด',{name:m.name})}</option>)}</Sel>}
+    {liveModels.length>0&&<Sel aria-label={tr('เลือกเอนจินเสียง')} value={engine} disabled={on} onChange={ev=>pickEngine(ev.target.value)} className="w-full">{liveModels.map(m=><option key={m.id} value={m.id}>{tr('{name} · สด',{name:modelTitle(m)})+' · '+priceText(m)}</option>)}</Sel>}
     {kind==='translate'&&live&&<Sel aria-label={tr('แปลเป็นภาษา')} value={lang} disabled={on} onChange={ev=>pickLang(ev.target.value)} className="w-full">{LANGS.map(([c,n])=><option key={c} value={c}>{tr('แปลเป็น{n}',{n})}</option>)}</Sel>}
     {(!live||kind==='agent')&&<>
     <div role="group" aria-label={tr('โหมดการตอบ')} className="grid w-full grid-cols-2 rounded-full border border-border bg-muted/40 p-0.5 text-xs">

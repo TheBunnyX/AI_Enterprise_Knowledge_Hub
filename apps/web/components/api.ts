@@ -3,12 +3,12 @@ export const ROLES=['SUPER_ADMIN','DEPARTMENT_ADMIN','USER'] as const;
 export const roleLabel=(role:string)=>({SUPER_ADMIN:'Super Admin',DEPARTMENT_ADMIN:tr('ผู้ดูแลแผนก'),USER:tr('ผู้ใช้')} as Record<string,string>)[role]||role;
 export type User={id:string;name:string;email:string;role:string;tenant_id:string;active?:boolean;online?:boolean};
 export type Doc={id:string;can_write?:boolean;name:string;knowledge_base_id:string;size:number;status:string;error:string;version:number;created_at:string};
-export type KB={id:string;name:string;description:string;documents:number;department_id?:string;department?:string;can_write?:boolean};
+export type KB={id:string;name:string;description:string;documents:number;multimodal?:boolean;department_id?:string;department?:string;can_write?:boolean};
 export type Source={id:string;url:string;interval_minutes:number;enabled:boolean;document_id:string;last_checked:string;last_status:string;last_error:string};
-export type Citation={number?:number;version?:number;document_id:string;chunk_id:string;name:string;page:number;snippet:string;score?:number;url?:string};
+export type Citation={number?:number;version?:number;document_id:string;chunk_id:string;name:string;page:number;snippet:string;score?:number;rerank_score?:number;url?:string;kind?:string};
 export type Message={id?:string;role:string;content:string;citations:Citation[]};
 /** What a paused agent run waits for: a clarifying question (with optional quick replies) or approval to search the web. */
-export type AgentPending={kind:'question'|'approval';question?:string;options?:string[];queries?:string[]};
+export type AgentPending={kind:'question'|'approval';tool?:'web_search'|'save_to_library';question?:string;options?:string[];queries?:string[];file?:string;knowledge_base?:string};
 export type Model={id:string;name:string;display_name?:string;provider:string;api_id:string;category:string;enabled:boolean;configured:boolean;input_price:number;output_price:number;effort?:string;media_limits?:Record<string,string[]>;rpm?:number;tpm?:number;rpd?:number;used_rpm?:number;used_tpm?:number;used_rpd?:number};
 const compact=(n:number)=>n>=1e6?(n/1e6).toFixed(n%1e6?1:0)+'M':n>=1000?(n/1000).toFixed(n%1000?1:0)+'K':String(n);
 export type LimitRow={label:string;used:number;limit:number;level:'ok'|'warn'|'full'};
@@ -30,4 +30,6 @@ export async function api<T>(path:string,init?:RequestInit):Promise<T>{
 export const post=<T,>(path:string,body:unknown)=>api<T>(path,{method:'POST',body:JSON.stringify(body)});
 export const date=(s:string)=>new Date(s).toLocaleString(LOCALE[getLang()],{dateStyle:'medium',timeStyle:'short'});
 export const fmt=(n:number=0)=>n.toLocaleString(LOCALE[getLang()]);
+/** Dollars with four decimals ($0.0000), so very small costs stay visible and comparable. */
+export const money4=(n:number=0)=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:4,maximumFractionDigits:4}).format(n);
 export const money=(n:number=0)=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(n);

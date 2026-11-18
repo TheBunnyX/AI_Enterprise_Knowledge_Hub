@@ -21,7 +21,7 @@ router = APIRouter(prefix='/api')
 DEFAULTS = {
     'cache': True, 'cache_days': 7,
     'auto_route': False, 'router_model': 'respan/span-01-lite:free',
-    'history_messages': 4, 'history_chars': 1500, 'max_output_tokens': 1024,
+    'history_messages': 2, 'history_chars': 1500, 'max_output_tokens': 1024,
     'rate_per_minute': 20, 'daily_requests': 0, 'alert_percent': 80,
     'media_daily_limit': 10, 'media_approval_usd': 0.0, 'media_daily_usd': 0.0,
     'web_search': 'ask',  # off = never; ask = the user switches it on, or approves each search an agent asks for; always = agents search without asking
@@ -32,7 +32,7 @@ class PolicyInput(BaseModel):
     cache_days: int = Field(default=7, ge=1, le=90)
     auto_route: bool = False
     router_model: str = Field(default='respan/span-01-lite:free', min_length=1, max_length=200)
-    history_messages: int = Field(default=4, ge=0, le=20)
+    history_messages: int = Field(default=2, ge=0, le=20)
     history_chars: int = Field(default=1500, ge=200, le=8000)
     max_output_tokens: int = Field(default=1024, ge=128, le=8192)
     rate_per_minute: int = Field(default=20, ge=0, le=1000)
@@ -137,7 +137,7 @@ async def route_model(db, question, evidence_chars, candidates, router_model):
                 {'role': 'user', 'content': f'คำถาม: {question[:600]}\nขนาดหลักฐานที่แนบ: {evidence_chars} ตัวอักษร\nโมเดลที่เลือกได้:\n{listing}'}]
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(8, connect=4)) as client:
-            r = await client.post(url + '/chat/completions', headers=gateway.headers(key), json={'model': router_model, 'messages': messages, 'max_tokens': 60, 'temperature': 0})
+            r = await client.post(url + '/chat/completions', headers=gateway.headers(key), json={'model': router_model, 'messages': messages, 'max_tokens': 60, 'temperature': 0, **gateway.routing('', url)})
             r.raise_for_status()
             out = r.json()['choices'][0]['message']['content'] or ''
     except (httpx.HTTPError, KeyError, IndexError, ValueError):

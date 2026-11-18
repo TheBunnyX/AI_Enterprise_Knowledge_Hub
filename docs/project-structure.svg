@@ -21,7 +21,7 @@
   <!-- apps/web -->
   <rect x="40" y="182" width="220" height="250" rx="12" class="card"/>
   <rect x="40" y="182" width="220" height="6" rx="3" fill="#2563eb"/>
-  <text x="56" y="214" class="d">apps/web</text><text x="56" y="236" class="n">Next.js 16 frontend, Thai UI</text>
+  <text x="56" y="214" class="d">apps/web</text><text x="56" y="236" class="n">Next.js 16 frontend, Thai + English</text>
   <text x="56" y="266" class="m">app/</text><text x="56" y="284" class="n">routes and layouts</text>
   <text x="56" y="310" class="m">components/</text><text x="56" y="328" class="n">chat, admin, PDF viewer</text>
   <text x="56" y="354" class="m">lib/</text><text x="56" y="372" class="n">API client, i18n, helpers</text>
@@ -34,7 +34,7 @@
   <text x="306" y="266" class="m">hub/</text><text x="306" y="284" class="n">auth, ingestion, search, chat,</text><text x="306" y="302" class="n">agent, admin, backups, tracing</text>
   <text x="306" y="328" class="m">migrations/</text><text x="306" y="346" class="n">Alembic schema history</text>
   <text x="306" y="372" class="m">eval/</text><text x="306" y="390" class="n">retrieval and answer evaluation</text>
-  <text x="306" y="416" class="m">tests/</text><text x="400" y="416" class="n">214 backend tests</text>
+  <text x="306" y="416" class="m">tests/</text><text x="400" y="416" class="n">274 backend tests</text>
 
   <!-- infra -->
   <rect x="560" y="182" width="220" height="250" rx="12" class="card"/>
@@ -59,7 +59,7 @@
   <g>
     <rect x="40" y="488" width="270" height="86" rx="10" class="card"/><text x="56" y="514" class="m">auth.py  rls.py</text><text x="56" y="536" class="n">sessions, OIDC, roles, RLS</text><text x="56" y="556" class="n">tenant isolation lives here</text>
     <rect x="330" y="488" width="270" height="86" rx="10" class="card"/><text x="346" y="514" class="m">uploads.py  tasks.py  ocr.py</text><text x="346" y="536" class="n">validate, parse, OCR, chunk</text><text x="346" y="556" class="n">the ingestion pipeline</text>
-    <rect x="620" y="488" width="270" height="86" rx="10" class="card"/><text x="636" y="514" class="m">retrieval.py  embeddings.py</text><text x="636" y="536" class="n">BM25 + vectors + RRF, reranking</text><text x="636" y="556" class="n">how search finds the answer</text>
+    <rect x="620" y="488" width="270" height="86" rx="10" class="card"/><text x="636" y="514" class="m">retrieval.py  embeddings.py</text><text x="636" y="536" class="n">BM25 + vectors + RRF, reranking</text><text x="636" y="556" class="n">multimodal.py: charts and figures</text>
     <rect x="910" y="488" width="250" height="86" rx="10" class="card"/><text x="926" y="514" class="m">chat_service.py  agent.py</text><text x="926" y="536" class="n">answers, citations, tool loop</text><text x="926" y="556" class="n">cite_check.py checks citations</text>
     <rect x="40" y="590" width="270" height="86" rx="10" class="card"/><text x="56" y="616" class="m">gateway.py  policies.py</text><text x="56" y="638" class="n">providers, encrypted keys, model</text><text x="56" y="658" class="n">policies and budgets</text>
     <rect x="330" y="590" width="270" height="86" rx="10" class="card"/><text x="346" y="616" class="m">backups.py  alerts.py  jobs.py</text><text x="346" y="638" class="n">encrypted backups, recovery,</text><text x="346" y="658" class="n">in-app alerts</text>

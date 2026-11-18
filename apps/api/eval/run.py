@@ -36,12 +36,12 @@ def load_questions():
 DROP = [lambda: None]
 
 
-def configure(embedding):
+def configure(embedding, rerank=False):
     """Point the app at a throwaway database before it is imported. Model files stay cached in data/eval between runs."""
     env_file = API.parent.parent / '.env'
     if embedding is None and env_file.exists():
         for line in env_file.read_text(encoding='utf-8').splitlines():
-            if line.startswith(('EMBEDDING_', 'OCR_')) and '=' in line:
+            if line.startswith(('EMBEDDING_', 'OCR_') + (('RERANK_',) if rerank else ())) and '=' in line:
                 key, value = line.split('=', 1); os.environ.setdefault(key, value.strip())
     elif embedding is not None:
         os.environ['EMBEDDING_MODEL'] = '' if embedding == 'hash' else embedding
@@ -52,7 +52,7 @@ def configure(embedding):
     from hub.scratch_db import create
     os.environ['DATABASE_URL'], DROP[0] = create('hub_eval')  # throw-away database on the Compose PostgreSQL
     os.environ.pop('MIGRATION_DATABASE_URL', None)
-    for key in ('S3_ENDPOINT', 'QDRANT_URL', 'CELERY_BROKER_URL', 'CLAMAV_HOST', 'RERANK_MODEL', 'APP_ENV'): os.environ.pop(key, None)
+    for key in ('S3_ENDPOINT', 'QDRANT_URL', 'CELERY_BROKER_URL', 'CLAMAV_HOST', 'APP_ENV') + (() if rerank else ('RERANK_MODEL',)): os.environ.pop(key, None)
     sys.path.insert(0, str(API))
     return work
 
@@ -104,8 +104,9 @@ def main():
     parser.add_argument('--json', help='write the full report to this file')
     parser.add_argument('--min-hit', type=float, default=0, help='exit 1 when hybrid hit@k is below this (for CI)')
     parser.add_argument('--misses', action='store_true', help='list the questions each mode failed')
+    parser.add_argument('--rerank', action='store_true', help='keep RERANK_MODEL from .env, so every mode is reranked like in chat (slower)')
     args = parser.parse_args()
-    questions = load_questions(); work = configure(args.embedding)
+    questions = load_questions(); work = configure(args.embedding, args.rerank)
     try:
         tenant, index = build_index()
         report, misses = evaluate(tenant, questions, args.modes.split(','), args.k)

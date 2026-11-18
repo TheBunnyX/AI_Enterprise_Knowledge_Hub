@@ -99,3 +99,19 @@
 .tts-list{grid-template-columns:minmax(0,1fr)!important;gap:12px}.tts-list .media-job{display:flex;flex-direction:column;padding:16px 18px}.tts-list .media-job>header{order:-2}.tts-list .job-prompt{order:-1;margin-top:10px;min-height:0;font-size:14px;-webkit-line-clamp:2}.tts-list .media-output{background:transparent;min-height:0;margin:12px 0 4px;justify-content:stretch}.tts-list .media-pending{height:auto;flex-direction:row;justify-content:flex-start;padding:16px;margin:12px 0 4px;gap:14px}.tts-list .job-meta{padding:8px 0}.tts-list .media-job footer{justify-content:flex-end}
 
 a.sidebar-help{text-decoration:none}a.sidebar-help svg:last-child{margin-left:0}a.sidebar-help:hover,a.sidebar-help[aria-current=page]{color:var(--c-2563eb,#2563eb)}
+
+.document-thumbnail.has-picture{padding:0;overflow:hidden;background:#f1f5f9}.document-thumbnail.has-picture img{width:100%;height:100%;object-fit:cover;display:block}
+
+.search-loading{margin-top:8px}.search-loading-head{display:flex;align-items:center;gap:14px;padding:6px 4px 16px}.search-loading-head strong{font-size:16px}
+.search-skeleton{display:grid;grid-template-columns:48px 1fr 150px;gap:18px;align-items:center;padding:20px;margin-bottom:12px}
+.sk{display:block;border-radius:8px;background:linear-gradient(90deg,#e8edf5 25%,#f4f7fb 50%,#e8edf5 75%);background-size:200% 100%;animation:sk-shimmer 1.3s ease-in-out infinite}
+.sk-icon{width:40px;height:48px}.sk-title{height:18px;width:46%;margin-bottom:12px}.sk-line{height:12px;width:92%;margin-bottom:8px}.sk-line.short{width:60%}.sk-thumb{height:88px;border-radius:10px}
+.dark .sk{background:linear-gradient(90deg,#1e293b 25%,#273449 50%,#1e293b 75%);background-size:200% 100%}
+@keyframes sk-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.sk{animation:none}}
+@media (max-width:640px){.search-skeleton{grid-template-columns:40px 1fr}.sk-thumb{display:none}}
+
+.search-loading-list{display:grid;gap:0}
+
+.price-sync-heading{display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin-bottom:14px}.price-sync-heading .muted{max-width:78ch}
+.price-sync-toggle{display:inline-flex;flex-direction:row!important;align-items:center;justify-content:flex-start;gap:10px;font-weight:550;cursor:pointer;width:fit-content}.price-sync-toggle input[type=checkbox]{width:18px;height:18px;padding:0;margin:0;accent-color:var(--primary);flex:none}
