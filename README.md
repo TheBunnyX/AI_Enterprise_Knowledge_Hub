@@ -1,6 +1,6 @@
 # AI Knowledge Hub
 
-**A multi-tenant, Thai-first enterprise knowledge platform.** Upload company documents, search them with hybrid retrieval, and get answers with **page-level citations** — backed by role- and department-based access control, PostgreSQL row-level security and measurable answer quality.
+**A multi-tenant, enterprise knowledge platform.** Upload company documents, search them with hybrid retrieval, and get answers with **page-level citations** — backed by role- and department-based access control, PostgreSQL row-level security and measurable answer quality.
 
 ![AI Knowledge Hub home page, English UI](docs/screenshots/preview.jpg)
 
