@@ -128,3 +128,9 @@ def test_agent_chat_searches_documents_with_the_callers_permissions(department, 
     assert 'ต้องคืนภายในเจ็ดวัน [1]' in ''.join(e.get('text', '') for e in events if e['type'] == 'delta')
     assert 'borrow.txt' in sent[1]['messages'][-1]['content']  # the tool result reached the model
     assert any(e['type'] == 'done' for e in events)
+
+
+def test_agent_mode_refuses_a_chosen_local_model(admin):
+    local = admin.post('/api/admin/models', json={'name': 'Local agent test', 'provider': 'Local LLM', 'api_id': 'qwen-local', 'category': 'LLM', 'enabled': True}).json()['id']
+    r = admin.post('/api/chat', json={'question': 'ลาได้กี่วัน', 'agent': True, 'model_id': local})
+    assert r.status_code == 422 and 'tool calling' in r.json()['detail']

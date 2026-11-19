@@ -68,7 +68,7 @@ it('turns the options of a clarifying question into one-click replies', async ()
   ];
   render(<Hub initialUser={user} />);
   await ask('ลาได้กี่วัน');
-  fireEvent.click(await waitFor(() => screen.getByRole('button', { name: 'ลาป่วย' })));
+  fireEvent.click(await waitFor(() => screen.getByRole('button', { name: /ลาป่วย/ })));
   await waitFor(() => expect(chats.length).toBe(2));
   expect(chats[1]).toMatchObject({ question: 'ลาป่วย', agent: true, conversation_id: 'c9' });
   expect(chats[1].agent_decision ?? null).toBeNull();
@@ -82,4 +82,16 @@ it('disables the web search switch when the organisation forbids web search', as
   await ask('ราคาทองวันนี้');
   await waitFor(() => expect(chats.length).toBe(1));
   expect(chats[0].web_search).toBe(false);
+});
+
+it('shows a card from the options written in the question text when the agent sends none', async () => {
+  replies = [
+    [{ type: 'meta', conversation_id: 'c9', message_id: 'm9', citations: [] }, { type: 'pending', kind: 'question', question: 'ต้องการตารางแบบไหน', options: [] }, { type: 'delta', text: 'ต้องการตารางแบบไหนครับ? • รายรับ-รายจ่าย • รายชื่อพนักงาน • ระบุเอง' }, { type: 'done', message_id: 'm9' }],
+    [{ type: 'meta', conversation_id: 'c9', message_id: 'm10', citations: [] }, { type: 'delta', text: 'ได้ครับ' }, { type: 'done', message_id: 'm10' }],
+  ];
+  render(<Hub initialUser={user} />);
+  await ask('สร้างไฟล์ xlsx');
+  fireEvent.click(await waitFor(() => screen.getByRole('button', { name: /รายชื่อพนักงาน/ })));
+  await waitFor(() => expect(chats.length).toBe(2));
+  expect(chats[1]).toMatchObject({ question: 'รายชื่อพนักงาน' });
 });

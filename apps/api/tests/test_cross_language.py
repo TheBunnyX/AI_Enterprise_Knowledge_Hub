@@ -7,6 +7,7 @@ def test_only_a_question_without_thai_letters_is_cross_language(monkeypatch):
     assert retrieval.cross_language('How many vacation days do I get?')
     assert not retrieval.cross_language('ลาพักร้อนกี่วัน')
     assert not retrieval.cross_language('How many วันลา do I get')  # one Thai word means a Thai-aware query
+    assert not retrieval.cross_language('5+5')  # digits and symbols only: not a language, keep the strict floor
 
 
 def test_it_needs_a_reranker_and_can_be_switched_off(monkeypatch):

@@ -177,12 +177,13 @@ IN_LIMIT=500  # above this many documents the scope is checked in Python instead
 
 CROSS_POOL=int(os.getenv('CROSS_LANGUAGE_POOL','20'))  # candidates the reranker sees for a question without Thai letters
 THAI_LETTERS=re.compile(r'[\u0e00-\u0e7f]')
+LATIN_LETTERS=re.compile(r'[A-Za-z]')
 
 def cross_language(query):
     """True for a question without Thai letters while a reranker is configured. Dense similarity between an English question and Thai
     passages is low (the 0.80 cut-off drops the right chunk), but the multilingual reranker scores them well, so such questions
-    keep more dense candidates and leave the verdict to the reranker, whose floor still rejects meaningless queries."""
-    return os.getenv('CROSS_LANGUAGE_SEARCH','true').lower()=='true' and bool(os.getenv('RERANK_MODEL')) and not THAI_LETTERS.search(query or '')
+    keep more dense candidates (a query with no letters at all, such as "5+5", is not a language and keeps the strict floor) and leave the verdict to the reranker, whose floor still rejects meaningless queries."""
+    return os.getenv('CROSS_LANGUAGE_SEARCH','true').lower()=='true' and bool(os.getenv('RERANK_MODEL')) and not THAI_LETTERS.search(query or '') and bool(LATIN_LETTERS.search(query or ''))
 
 DEPARTMENT_BOOST=1.2  # score multiplier for passages from the user's own department's knowledge bases
 

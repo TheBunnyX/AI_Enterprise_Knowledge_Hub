@@ -186,3 +186,10 @@ def test_the_nothing_found_reply_follows_the_language_of_the_question():
     assert no_evidence_text('afdasdsfasdfadf') == NO_EVIDENCE_EN
     assert no_evidence_text('ลาป่วยกี่วัน') == NO_EVIDENCE_TH
     assert no_evidence_text('') == NO_EVIDENCE_EN
+
+
+def test_reply_style_follows_the_question_language_and_asks_for_options():
+    from hub.chat_service import reply_style
+    assert 'reply in English only' in reply_style('create xlsx') and 'ภาษาไทย ให้ตอบเป็นภาษาไทย' not in reply_style('create xlsx')
+    assert 'ให้ตอบเป็นภาษาไทย' in reply_style('สร้างไฟล์ xlsx')
+    assert '"- "' in reply_style('x')  # a clarifying question lists its options one per line
