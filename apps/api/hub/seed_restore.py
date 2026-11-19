@@ -11,7 +11,7 @@ def empty(engine):
     with engine.connect() as c:return c.execute(text('SELECT count(*) FROM users')).scalar()==0
 
 def download(url,token,target):
-    headers={'Authorization':'Bearer '+token} if token else {}
+    headers={'Accept':'application/octet-stream',**({'Authorization':'Bearer '+token} if token else {})}
     with httpx.stream('GET',url,headers=headers,follow_redirects=True,timeout=httpx.Timeout(60,read=600)) as r:
         r.raise_for_status()
         with open(target,'wb') as f:
