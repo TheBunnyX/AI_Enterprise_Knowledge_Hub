@@ -1,12 +1,231 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 1330" width="1760" height="1330" font-family="Noto Sans, Segoe UI, Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1760 2950" width="1760" height="2950" font-family="Noto Sans, Segoe UI, Helvetica, Arial, sans-serif">
 <defs><marker id="ah" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse"><path d="M1,1 L11,6 L1,11 z" fill="#2d3748"/></marker><marker id="ah2" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M1,1 L11,6 L1,11 z" fill="#2d3748"/></marker></defs>
-<rect width="1760" height="1330" fill="#f4f5f7"/>
+<rect width="1760" height="2950" fill="#f4f5f7"/>
 <rect x="20" y="20" width="1720" height="458" fill="none" stroke="#b9bcc4" stroke-width="2" stroke-dasharray="8 6"/>
 <rect x="20" y="496" width="1720" height="494" fill="none" stroke="#b9bcc4" stroke-width="2" stroke-dasharray="8 6"/>
-<rect x="20" y="1008" width="1720" height="258" fill="none" stroke="#b9bcc4" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="20" y="1008" width="1720" height="380" fill="none" stroke="#b9bcc4" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="60" y="1058" text-anchor="start" font-size="38" fill="#3a3f4d" font-weight="700" font-style="italic">Agent, AI Skills and Approvals</text>
+<rect x="60" y="1108" width="190" height="110" fill="#c9dcff" stroke="#1f2a44" stroke-width="2"/>
+<text x="155.0" y="1145.5" text-anchor="middle" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">AI skills</text>
+<text x="155.0" y="1165.5" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">private or shared</text>
+<text x="155.0" y="1180.5" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">9 ready-made (English)</text>
+<text x="155.0" y="1195.5" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">picked in the chat</text>
+<path d="M252,1163 L300,1163" fill="none" stroke="#2d3748" stroke-width="2.2" marker-end="url(#ah)"/>
+<rect x="304" y="1118" width="170" height="90" fill="#0a73b0" stroke="#1f2a44" stroke-width="2"/>
+<text x="389.0" y="1151.0" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700" font-style="italic">Prompt builder</text>
+<text x="389.0" y="1167.0" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700" font-style="italic">safety rules &gt;</text>
+<text x="389.0" y="1183.0" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700" font-style="italic">skill &gt; documents</text>
+<path d="M476,1163 L524,1163" fill="none" stroke="#2d3748" stroke-width="2.2" marker-end="url(#ah)"/>
+<rect x="528" y="1103" width="220" height="120" fill="#c9dcff" stroke="#1f2a44" stroke-width="2"/>
+<text x="638.0" y="1145.5" text-anchor="middle" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">Agent loop</text>
+<text x="638.0" y="1165.5" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">LangGraph · plans, calls tools</text>
+<text x="638.0" y="1180.5" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">6 rounds · 10 calls</text>
+<text x="638.0" y="1195.5" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">4 parallel · 75 s · 60k tokens</text>
+<path d="M750,1163 L798,1163" fill="none" stroke="#2d3748" stroke-width="2.2" marker-start="url(#ah2)" marker-end="url(#ah)"/>
+<rect x="802" y="1083" width="270" height="160" fill="#c9dcff" stroke="#1f2a44" stroke-width="2"/>
+<text x="937.0" y="1123.0" text-anchor="middle" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">Tools</text>
+<text x="937.0" y="1143.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">search_documents · read_document</text>
+<text x="937.0" y="1158.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">calculate (exact arithmetic)</text>
+<text x="937.0" y="1173.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">read_table (xlsx, csv)</text>
+<text x="937.0" y="1188.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">summarize_document · view_figure</text>
+<text x="937.0" y="1203.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">web_search · create files</text>
+<text x="937.0" y="1218.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">save_to_library</text>
+<path d="M1074,1163 L1122,1163" fill="none" stroke="#2d3748" stroke-width="2.2" marker-end="url(#ah)"/>
+<rect x="1126" y="1123" width="170" height="80" fill="#c9dcff" stroke="#1f2a44" stroke-width="2"/>
+<text x="1211.0" y="1153.0" text-anchor="middle" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">Search service</text>
+<text x="1211.0" y="1173.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">tenant · KB · ACL</text>
+<text x="1211.0" y="1188.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">hybrid search</text>
+<path d="M638,1225 L638,1268" fill="none" stroke="#2d3748" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#ah)"/>
+<rect x="528" y="1270" width="220" height="62" rx="8" fill="#fff" stroke="#475569" stroke-width="1.6" stroke-dasharray="6 5"/>
+<text x="638.0" y="1298.5" text-anchor="middle" font-size="13" fill="#1f2a44" font-weight="400" font-style="normal">Pause for a human</text>
+<text x="638.0" y="1316.5" text-anchor="middle" font-size="11" fill="#475569" font-weight="400" font-style="normal">question · web search · save</text>
+<path d="M750,1301 L846,1301" fill="none" stroke="#2d3748" stroke-width="2.2" marker-end="url(#ah)"/>
+<path d="M854,1273 v40 a46,11 0 0 0 92,0 v-40" fill="#d6e4ff" stroke="#1f2a44" stroke-width="2.2"/><ellipse cx="900" cy="1273" rx="46" ry="11" fill="#d6e4ff" stroke="#1f2a44" stroke-width="2.2"/>
+<text x="900" y="1298" text-anchor="middle" font-size="12" fill="#1f2a44" font-weight="500" font-style="normal">Agent threads</text>
+<text x="900" y="1352" text-anchor="middle" font-size="11" fill="#475569" font-weight="400" font-style="normal">saved in PostgreSQL · survives restarts</text>
+<path d="M1072,1228 L1190,1228 L1190,1283" fill="none" stroke="#2d3748" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#ah)"/>
+<rect x="1100" y="1285" width="190" height="56" rx="8" fill="#fff" stroke="#475569" stroke-width="1.6" stroke-dasharray="6 5"/>
+<text x="1195.0" y="1310.5" text-anchor="middle" font-size="13" fill="#1f2a44" font-weight="400" font-style="normal">Library + ingestion</text>
+<text x="1195.0" y="1328.5" text-anchor="middle" font-size="11" fill="#475569" font-weight="400" font-style="normal">after approval</text>
+<text x="640" y="1088" text-anchor="middle" font-size="15" fill="#0d7aa3" font-weight="400" font-style="italic">Reasoning</text>
+<text x="1380" y="1093" text-anchor="start" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">How a skill and an agent run</text>
+<text x="1380" y="1117" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">1  Skill instructions steer format and tone</text>
+<text x="1380" y="1139" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">2  Safety, citation and no-obey-documents rules</text>
+<text x="1380" y="1161" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">    always stay above the skill</text>
+<text x="1380" y="1183" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">3  The agent loops until it can answer</text>
+<text x="1380" y="1205" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">4  Questions, web search and saves wait</text>
+<text x="1380" y="1227" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">    for the user; the run resumes after</text>
+<rect x="20" y="1406" width="1720" height="430" fill="none" stroke="#b9bcc4" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="60" y="1456" text-anchor="start" font-size="38" fill="#3a3f4d" font-weight="700" font-style="italic">Media, Voice and Generated Files</text>
+<rect x="60" y="1506" width="150" height="90" fill="#c9dcff" stroke="#1f2a44" stroke-width="2"/>
+<text x="135.0" y="1541.0" text-anchor="middle" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">Studio UI</text>
+<text x="135.0" y="1561.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">image · video</text>
+<text x="135.0" y="1576.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">speech · transcribe</text>
+<path d="M212,1551 L252,1551" fill="none" stroke="#2d3748" stroke-width="2.2" marker-end="url(#ah)"/>
+<rect x="256" y="1511" width="170" height="80" fill="#0a73b0" stroke="#1f2a44" stroke-width="2"/>
+<text x="341.0" y="1539.0" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700" font-style="italic">Media API</text>
+<text x="341.0" y="1555.0" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700" font-style="italic">estimate · budget</text>
+<text x="341.0" y="1571.0" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700" font-style="italic">approval · limits</text>
+<path d="M428,1551 L468,1551" fill="none" stroke="#2d3748" stroke-width="2.2" marker-end="url(#ah)"/>
+<path d="M468,1511 v40 a46,11 0 0 0 92,0 v-40" fill="#f1e04d" stroke="#1f2a44" stroke-width="2.2"/><ellipse cx="514" cy="1511" rx="46" ry="11" fill="#f1e04d" stroke="#1f2a44" stroke-width="2.2"/>
+<text x="514" y="1536" text-anchor="middle" font-size="12" fill="#1f2a44" font-weight="500" font-style="normal">Redis queue</text>
+<path d="M562,1551 L602,1551" fill="none" stroke="#2d3748" stroke-width="2.2" marker-end="url(#ah)"/>
+<rect x="606" y="1511" width="150" height="80" fill="#0a73b0" stroke="#1f2a44" stroke-width="2"/>
+<text x="681.0" y="1539.0" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700" font-style="italic">Celery</text>
+<text x="681.0" y="1555.0" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700" font-style="italic">media job</text>
+<text x="681.0" y="1571.0" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700" font-style="italic">retry · cancel</text>
+<path d="M758,1551 L798,1551" fill="none" stroke="#2d3748" stroke-width="2.2" marker-end="url(#ah)"/>
+<rect x="802" y="1501" width="200" height="100" fill="#c9dcff" stroke="#1f2a44" stroke-width="2"/>
+<text x="902.0" y="1533.5" text-anchor="middle" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">Provider</text>
+<text x="902.0" y="1553.5" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">OpenRouter · Google AI</text>
+<text x="902.0" y="1568.5" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">result validated before</text>
+<text x="902.0" y="1583.5" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">it is stored</text>
+<path d="M1004,1551 L1044,1551" fill="none" stroke="#2d3748" stroke-width="2.2" marker-end="url(#ah)"/>
+<path d="M1044,1511 v40 a46,11 0 0 0 92,0 v-40" fill="#d6e4ff" stroke="#1f2a44" stroke-width="2.2"/><ellipse cx="1090" cy="1511" rx="46" ry="11" fill="#d6e4ff" stroke="#1f2a44" stroke-width="2.2"/>
+<text x="1090" y="1536" text-anchor="middle" font-size="12" fill="#1f2a44" font-weight="500" font-style="normal">SeaweedFS</text>
+<text x="1090" y="1577" text-anchor="middle" font-size="11" fill="#475569" font-weight="400" font-style="normal">results · owner only</text>
+<path d="M1090,1618 L1090,1656" fill="none" stroke="#2d3748" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#ah)"/>
+<rect x="1020" y="1656" width="140" height="60" fill="#c9dcff" stroke="#1f2a44" stroke-width="2"/>
+<text x="1090.0" y="1683.5" text-anchor="middle" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">Job history</text>
+<text x="1090.0" y="1703.5" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">PostgreSQL</text>
+<text x="520" y="1481" text-anchor="middle" font-size="15" fill="#0d7aa3" font-weight="400" font-style="italic">Image · video · TTS · STT jobs</text>
+<text x="1230" y="1494" text-anchor="start" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">Durable jobs</text>
+<text x="1230" y="1518" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">Estimate and daily budget first;</text>
+<text x="1230" y="1540" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">above the threshold an admin approves.</text>
+<text x="1230" y="1562" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">Recovery re-queues stalled jobs.</text>
+<text x="1230" y="1584" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">Examples on each page are saved samples.</text>
+<text x="60" y="1681" text-anchor="start" font-size="15" fill="#0d7aa3" font-weight="400" font-style="italic">Voice chat</text>
+<rect x="60" y="1696" width="150" height="70" fill="#c9dcff" stroke="#1f2a44" stroke-width="2"/>
+<text x="135.0" y="1728.5" text-anchor="middle" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">Browser mic</text>
+<text x="135.0" y="1748.5" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">16 kHz PCM</text>
+<path d="M212,1731 L262,1731" fill="none" stroke="#2d3748" stroke-width="2.2" marker-start="url(#ah2)" marker-end="url(#ah)"/>
+<rect x="266" y="1696" width="180" height="70" fill="#0a73b0" stroke="#1f2a44" stroke-width="2"/>
+<text x="356.0" y="1727.0" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700" font-style="italic">WebSocket relay</text>
+<text x="356.0" y="1743.0" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700" font-style="italic">key stays on the server</text>
+<path d="M448,1731 L498,1731" fill="none" stroke="#2d3748" stroke-width="2.2" marker-start="url(#ah2)" marker-end="url(#ah)"/>
+<rect x="502" y="1696" width="160" height="70" fill="#c9dcff" stroke="#1f2a44" stroke-width="2"/>
+<text x="582.0" y="1728.5" text-anchor="middle" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">Live API</text>
+<text x="582.0" y="1748.5" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">Thai · English only</text>
+<text x="60" y="1794" text-anchor="start" font-size="11" fill="#475569" font-weight="400" font-style="normal">Tool calls (document and web search) run with the caller's own permissions.</text>
+<text x="1230" y="1681" text-anchor="start" font-size="15" fill="#0d7aa3" font-weight="400" font-style="italic">Generated files</text>
+<rect x="1230" y="1696" width="150" height="70" fill="#0a73b0" stroke="#1f2a44" stroke-width="2"/>
+<text x="1305.0" y="1727.0" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700" font-style="italic">create_* tools</text>
+<text x="1305.0" y="1743.0" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700" font-style="italic">chat and agent</text>
+<path d="M1382,1731 L1422,1731" fill="none" stroke="#2d3748" stroke-width="2.2" marker-end="url(#ah)"/>
+<rect x="1426" y="1696" width="250" height="70" fill="#c9dcff" stroke="#1f2a44" stroke-width="2"/>
+<text x="1551.0" y="1721.0" text-anchor="middle" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">Builders</text>
+<text x="1551.0" y="1741.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">DOCX · PDF · PPTX · XLSX · CSV</text>
+<text x="1551.0" y="1756.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">Thai PDF: tone-mark glyphs</text>
+<rect x="20" y="1854" width="1720" height="330" fill="none" stroke="#b9bcc4" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="60" y="1904" text-anchor="start" font-size="38" fill="#3a3f4d" font-weight="700" font-style="italic">Identity, Departments and Administration</text>
+<rect x="60" y="1954" width="180" height="100" fill="#c9dcff" stroke="#1f2a44" stroke-width="2"/>
+<text x="150.0" y="1994.0" text-anchor="middle" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">Sign in</text>
+<text x="150.0" y="2014.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">password (Argon2)</text>
+<text x="150.0" y="2029.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">or OIDC (code + PKCE)</text>
+<path d="M242,2004 L282,2004" fill="none" stroke="#2d3748" stroke-width="2.2" marker-end="url(#ah)"/>
+<rect x="286" y="1954" width="190" height="100" fill="#c9dcff" stroke="#1f2a44" stroke-width="2"/>
+<text x="381.0" y="1986.5" text-anchor="middle" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">Session</text>
+<text x="381.0" y="2006.5" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">opaque token, SHA-256</text>
+<text x="381.0" y="2021.5" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">digest stored · 24 h</text>
+<text x="381.0" y="2036.5" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">checked every request</text>
+<path d="M478,2004 L518,2004" fill="none" stroke="#2d3748" stroke-width="2.2" marker-end="url(#ah)"/>
+<rect x="522" y="1959" width="170" height="90" fill="#0a73b0" stroke="#1f2a44" stroke-width="2"/>
+<text x="607.0" y="1992.0" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700" font-style="italic">RBAC</text>
+<text x="607.0" y="2008.0" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700" font-style="italic">Super Admin</text>
+<text x="607.0" y="2024.0" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700" font-style="italic">Dept Admin · User</text>
+<path d="M694,2004 L734,2004" fill="none" stroke="#2d3748" stroke-width="2.2" marker-end="url(#ah)"/>
+<rect x="738" y="1944" width="230" height="120" fill="#c9dcff" stroke="#1f2a44" stroke-width="2"/>
+<text x="853.0" y="1979.0" text-anchor="middle" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">Access scope</text>
+<text x="853.0" y="1999.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">tenant</text>
+<text x="853.0" y="2014.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">department</text>
+<text x="853.0" y="2029.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">KB + document ACL</text>
+<text x="853.0" y="2044.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">(user · department · group)</text>
+<path d="M970,2004 L1010,2004" fill="none" stroke="#2d3748" stroke-width="2.2" marker-end="url(#ah)"/>
+<path d="M1012,1954 v40 a46,11 0 0 0 92,0 v-40" fill="#d6e4ff" stroke="#1f2a44" stroke-width="2.2"/><ellipse cx="1058" cy="1954" rx="46" ry="11" fill="#d6e4ff" stroke="#1f2a44" stroke-width="2.2"/>
+<text x="1058" y="1979" text-anchor="middle" font-size="12" fill="#1f2a44" font-weight="500" font-style="normal">PostgreSQL</text>
+<text x="1058" y="2020" text-anchor="middle" font-size="11" fill="#475569" font-weight="400" font-style="normal">RLS · hub_app role</text>
+<text x="640" y="1929" text-anchor="middle" font-size="15" fill="#0d7aa3" font-weight="400" font-style="italic">Who may see what</text>
+<rect x="60" y="2084" width="230" height="70" fill="#c9dcff" stroke="#1f2a44" stroke-width="2"/>
+<text x="175.0" y="2116.5" text-anchor="middle" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">Departments</text>
+<text x="175.0" y="2136.5" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">own KBs · admins · members</text>
+<rect x="310" y="2084" width="230" height="70" fill="#c9dcff" stroke="#1f2a44" stroke-width="2"/>
+<text x="425.0" y="2109.0" text-anchor="middle" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">Thai + English names</text>
+<text x="425.0" y="2129.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">departments · KBs · files · users</text>
+<text x="425.0" y="2144.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">shown in the page language</text>
+<rect x="560" y="2084" width="200" height="70" fill="#c9dcff" stroke="#1f2a44" stroke-width="2"/>
+<text x="660.0" y="2109.0" text-anchor="middle" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">Model policy</text>
+<text x="660.0" y="2129.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">allowed models · default</text>
+<text x="660.0" y="2144.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">budgets per organisation</text>
+<rect x="780" y="2084" width="190" height="70" fill="#c9dcff" stroke="#1f2a44" stroke-width="2"/>
+<text x="875.0" y="2116.5" text-anchor="middle" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">Audit log</text>
+<text x="875.0" y="2136.5" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">sensitive actions · CSV</text>
+<text x="1230" y="1942" text-anchor="start" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">Admin console</text>
+<text x="1230" y="1966" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">Overview · Usage and billing · Security</text>
+<text x="1230" y="1988" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">System and infrastructure · Backup</text>
+<text x="1230" y="2010" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal"></text>
+<text x="1230" y="2032" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">Department admins manage only their</text>
+<text x="1230" y="2054" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">own department; the API enforces it.</text>
+<rect x="20" y="2202" width="1720" height="380" fill="none" stroke="#b9bcc4" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="60" y="2252" text-anchor="start" font-size="38" fill="#3a3f4d" font-weight="700" font-style="italic">Operations and Quality</text>
+<rect x="60" y="2302" width="150" height="80" fill="#0a73b0" stroke="#1f2a44" stroke-width="2"/>
+<text x="135.0" y="2338.0" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700" font-style="italic">Scheduler</text>
+<text x="135.0" y="2354.0" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700" font-style="italic">Celery beat</text>
+<path d="M212,2342 L252,2342" fill="none" stroke="#2d3748" stroke-width="2.2" marker-end="url(#ah)"/>
+<rect x="256" y="2282" width="230" height="120" fill="#c9dcff" stroke="#1f2a44" stroke-width="2"/>
+<text x="371.0" y="2317.0" text-anchor="middle" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">Maintenance tick</text>
+<text x="371.0" y="2337.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">recover stalled jobs</text>
+<text x="371.0" y="2352.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">automatic backup</text>
+<text x="371.0" y="2367.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">source sync · model sync</text>
+<text x="371.0" y="2382.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">hourly clean-up</text>
+<path d="M488,2322 L540,2322 L540,2297 L580,2297" fill="none" stroke="#2d3748" stroke-width="2.2" marker-end="url(#ah)"/>
+<path d="M488,2372 L580,2372" fill="none" stroke="#2d3748" stroke-width="2.2" marker-end="url(#ah)"/>
+<rect x="584" y="2277" width="160" height="60" fill="#0a73b0" stroke="#1f2a44" stroke-width="2"/>
+<text x="664.0" y="2303.0" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700" font-style="italic">ops-worker</text>
+<text x="664.0" y="2319.0" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700" font-style="italic">backup · restore</text>
+<path d="M804,2272 v40 a46,11 0 0 0 92,0 v-40" fill="#d6e4ff" stroke="#1f2a44" stroke-width="2.2"/><ellipse cx="850" cy="2272" rx="46" ry="11" fill="#d6e4ff" stroke="#1f2a44" stroke-width="2.2"/>
+<text x="850" y="2297" text-anchor="middle" font-size="12" fill="#1f2a44" font-weight="500" font-style="normal">Backups</text>
+<text x="850" y="2338" text-anchor="middle" font-size="11" fill="#475569" font-weight="400" font-style="normal">encrypted · tested restore</text>
+<path d="M746,2307 L802,2307" fill="none" stroke="#2d3748" stroke-width="2.2" marker-end="url(#ah)"/>
+<rect x="584" y="2352" width="160" height="60" fill="#c9dcff" stroke="#1f2a44" stroke-width="2"/>
+<text x="664.0" y="2379.5" text-anchor="middle" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">Safety snapshot</text>
+<text x="664.0" y="2399.5" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">before every restore</text>
+<rect x="1000" y="2282" width="230" height="120" fill="#c9dcff" stroke="#1f2a44" stroke-width="2"/>
+<text x="1115.0" y="2324.5" text-anchor="middle" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">Monitoring</text>
+<text x="1115.0" y="2344.5" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">health: DB · Redis · Qdrant</text>
+<text x="1115.0" y="2359.5" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">S3 · ClamAV · workers</text>
+<text x="1115.0" y="2374.5" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">in-app alerts</text>
+<rect x="1000" y="2422" width="230" height="56" rx="8" fill="#fff" stroke="#475569" stroke-width="1.6" stroke-dasharray="6 5"/>
+<text x="1115.0" y="2447.5" text-anchor="middle" font-size="13" fill="#1f2a44" font-weight="400" font-style="normal">Langfuse (optional)</text>
+<text x="1115.0" y="2465.5" text-anchor="middle" font-size="11" fill="#475569" font-weight="400" font-style="normal">traces · content switch</text>
+<text x="760" y="2250" text-anchor="middle" font-size="15" fill="#0d7aa3" font-weight="400" font-style="italic">Run and recover</text>
+<text x="60" y="2472" text-anchor="start" font-size="15" fill="#0d7aa3" font-weight="400" font-style="italic">Quality checks</text>
+<rect x="60" y="2487" width="190" height="70" fill="#fbfbf7" stroke="#1f2a44" stroke-width="2"/>
+<text x="155.0" y="2519.5" text-anchor="middle" font-size="13" fill="#1f2a44" font-weight="700" font-style="normal">Retrieval eval</text>
+<text x="155.0" y="2539.5" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">152 questions · no LLM</text>
+<path d="M252,2522 L292,2522" fill="none" stroke="#2d3748" stroke-width="2.2" marker-end="url(#ah)"/>
+<rect x="296" y="2487" width="190" height="70" fill="#c9dcff" stroke="#1f2a44" stroke-width="2"/>
+<text x="391.0" y="2519.5" text-anchor="middle" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">hit@1 · hit@k</text>
+<text x="391.0" y="2539.5" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">MRR · doc@k per mode</text>
+<rect x="560" y="2487" width="190" height="70" fill="#fbfbf7" stroke="#1f2a44" stroke-width="2"/>
+<text x="655.0" y="2519.5" text-anchor="middle" font-size="13" fill="#1f2a44" font-weight="700" font-style="normal">Answer eval</text>
+<text x="655.0" y="2539.5" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">sampled evenly</text>
+<path d="M752,2522 L792,2522" fill="none" stroke="#2d3748" stroke-width="2.2" marker-end="url(#ah)"/>
+<rect x="796" y="2492" width="190" height="60" fill="#0a73b0" stroke="#1f2a44" stroke-width="2"/>
+<text x="891.0" y="2518.0" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700" font-style="italic">DeepEval judge</text>
+<text x="891.0" y="2534.0" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700" font-style="italic">faithfulness · citations</text>
+<path d="M988,2522 L1028,2522" fill="none" stroke="#2d3748" stroke-width="2.2" marker-end="url(#ah)"/>
+<rect x="1032" y="2487" width="200" height="70" fill="#c9dcff" stroke="#1f2a44" stroke-width="2"/>
+<text x="1132.0" y="2519.5" text-anchor="middle" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">Baseline</text>
+<text x="1132.0" y="2539.5" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">judge + corpus noted</text>
+<text x="1300" y="2290" text-anchor="start" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">Tests</text>
+<text x="1300" y="2314" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">Backend: 340 tests on a real Postgres</text>
+<text x="1300" y="2336" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">Web: 79 component tests</text>
+<text x="1300" y="2358" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">Browser: 15 search-page checks</text>
+<text x="1300" y="2380" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">Row-level security check on a live DB</text>
+<rect x="20" y="2600" width="1720" height="258" fill="none" stroke="#b9bcc4" stroke-width="2" stroke-dasharray="8 6"/>
 <text x="60" y="452" text-anchor="start" font-size="38" fill="#3a3f4d" font-weight="700" font-style="italic">Ingestion Pipeline</text>
 <text x="60" y="552" text-anchor="start" font-size="38" fill="#3a3f4d" font-weight="700" font-style="italic">Retrieval + Generation</text>
-<text x="60" y="1046" text-anchor="start" font-size="30" fill="#3a3f4d" font-weight="700" font-style="italic">Platform services</text>
+<text x="60" y="2638" text-anchor="start" font-size="30" fill="#3a3f4d" font-weight="700" font-style="italic">Platform services</text>
 <line x1="115" y1="226" x2="115" y2="134" stroke="#111" stroke-width="4"/>
 <rect x="93" y="118" width="44" height="32" fill="#fff" stroke="#111" stroke-width="3.5"/><line x1="93" y1="127" x2="137" y2="127" stroke="#111" stroke-width="3"/>
 <line x1="115" y1="226" x2="61" y2="196" stroke="#111" stroke-width="4"/>
@@ -245,7 +464,7 @@
 <rect x="1094" y="626" width="198" height="94" fill="#fbfbf7" stroke="#2b2b2b" stroke-width="2.4"/>
 <text x="1193" y="652.0" text-anchor="middle" font-size="12.5" fill="#1f2a44" font-weight="600" font-style="normal">ONNX Runtime · CPU</text>
 <text x="1193" y="674" text-anchor="middle" font-size="12" fill="#1f2a44" font-weight="400" font-style="normal">bge-reranker-v2-m3</text>
-<text x="1193" y="696" text-anchor="middle" font-size="11" fill="#475569" font-weight="400" font-style="normal">reorders · drops score &lt; 0.1</text>
+<text x="1193" y="696" text-anchor="middle" font-size="11" fill="#475569" font-weight="400" font-style="normal">reorders · drops score &lt; 0.01</text>
 <text x="1193" y="614" text-anchor="middle" font-size="17" fill="#0d7aa3" font-weight="400" font-style="italic">Reranking</text>
 <path d="M1090,672 L1030,672" fill="none" stroke="#2d3748" stroke-width="2.2"  marker-end="url(#ah)"/>
 <path d="M997,647 h25 l9,9 v35 h-34 z" fill="#fff" stroke="#1f2a44" stroke-width="2.2" stroke-linejoin="round"/><path d="M1022,647 v9 h9" fill="none" stroke="#1f2a44" stroke-width="2.2"/>
@@ -266,48 +485,49 @@
 <text x="1100" y="922" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">4  Fuse the two rankings with RRF (top 4), then rerank and drop weak ones</text>
 <text x="1100" y="944" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">5  Send the evidence (and pictures) to the LLM, stream the answer</text>
 <text x="1100" y="966" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">6  cite_check fixes [n] markers; save message, usage, audit; trace</text>
-<rect x="40" y="1066" width="270" height="176" rx="10" fill="#fff" stroke="#cbd5e1" stroke-width="1.6"/>
-<rect x="40" y="1066" width="270" height="34" rx="10" fill="#0d7aa3"/><rect x="40" y="1086" width="270" height="14" fill="#0d7aa3"/>
-<text x="54" y="1090" text-anchor="start" font-size="16" fill="#fff" font-weight="700" font-style="normal">Voice chat</text>
-<text x="54" y="1126" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Mic → WebSocket relay → Google Live</text>
-<text x="54" y="1154" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Tools: document and web search</text>
-<text x="54" y="1182" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Transcript: you | AI in two columns</text>
-<text x="54" y="1210" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Max 15 min, one session per user</text>
-<rect x="325" y="1066" width="270" height="176" rx="10" fill="#fff" stroke="#cbd5e1" stroke-width="1.6"/>
-<rect x="325" y="1066" width="270" height="34" rx="10" fill="#7c3aed"/><rect x="325" y="1086" width="270" height="14" fill="#7c3aed"/>
-<text x="339" y="1090" text-anchor="start" font-size="16" fill="#fff" font-weight="700" font-style="normal">Media studio</text>
-<text x="339" y="1126" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Image, video, speech-to-text, TTS</text>
-<text x="339" y="1154" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Celery job → OpenRouter / Google AI</text>
-<text x="339" y="1182" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Results in SeaweedFS S3, owner only</text>
-<text x="339" y="1210" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Recovery, budgets, daily limits</text>
-<rect x="610" y="1066" width="270" height="176" rx="10" fill="#fff" stroke="#cbd5e1" stroke-width="1.6"/>
-<rect x="610" y="1066" width="270" height="34" rx="10" fill="#be185d"/><rect x="610" y="1086" width="270" height="14" fill="#be185d"/>
-<text x="624" y="1090" text-anchor="start" font-size="16" fill="#fff" font-weight="700" font-style="normal">Multimodal RAG</text>
-<text x="624" y="1126" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Optional: MULTIMODAL_RAG=true</text>
-<text x="624" y="1154" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Figure pages and images get a caption</text>
-<text x="624" y="1182" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Image vectors in Qdrant (3rd ranking)</text>
-<text x="624" y="1210" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Vision models see the picture</text>
-<rect x="895" y="1066" width="270" height="176" rx="10" fill="#fff" stroke="#cbd5e1" stroke-width="1.6"/>
-<rect x="895" y="1066" width="270" height="34" rx="10" fill="#b45309"/><rect x="895" y="1086" width="270" height="14" fill="#b45309"/>
-<text x="909" y="1090" text-anchor="start" font-size="16" fill="#fff" font-weight="700" font-style="normal">Cost controls</text>
-<text x="909" y="1126" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Answer cache, prompt cache, router</text>
-<text x="909" y="1154" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Model policies, RPM/TPM/RPD limits</text>
-<text x="909" y="1182" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Monthly budget per organisation</text>
-<text x="909" y="1210" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Fallback model on 429 / 5xx</text>
-<rect x="1180" y="1066" width="270" height="176" rx="10" fill="#fff" stroke="#cbd5e1" stroke-width="1.6"/>
-<rect x="1180" y="1066" width="270" height="34" rx="10" fill="#047857"/><rect x="1180" y="1086" width="270" height="14" fill="#047857"/>
-<text x="1194" y="1090" text-anchor="start" font-size="16" fill="#fff" font-weight="700" font-style="normal">Security</text>
-<text x="1194" y="1126" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Cookie sessions, Argon2, optional OIDC</text>
-<text x="1194" y="1154" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Super Admin · Dept Admin · User</text>
-<text x="1194" y="1182" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">KB/document ACL: user, dept, group</text>
-<text x="1194" y="1210" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">PostgreSQL RLS (hub_app) + audit log</text>
-<rect x="1465" y="1066" width="270" height="176" rx="10" fill="#fff" stroke="#cbd5e1" stroke-width="1.6"/>
-<rect x="1465" y="1066" width="270" height="34" rx="10" fill="#475569"/><rect x="1465" y="1086" width="270" height="14" fill="#475569"/>
-<text x="1479" y="1090" text-anchor="start" font-size="16" fill="#fff" font-weight="700" font-style="normal">Operations</text>
-<text x="1479" y="1126" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Celery beat: maintenance + 24 h backups</text>
-<text x="1479" y="1154" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Encrypted backups, safety snapshot</text>
-<text x="1479" y="1182" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">ClamAV, alerts, infrastructure health</text>
-<text x="1479" y="1210" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Langfuse traces, Ragas scores</text>
-<text x="60" y="1292" text-anchor="start" font-size="13" fill="#475569" font-weight="400" font-style="normal">Every query is filtered by tenant and ACL in the API, in Qdrant and by PostgreSQL row-level security. Drawn from the code in apps/api/hub.</text>
-<text x="60" y="1312" text-anchor="start" font-size="13" fill="#475569" font-weight="400" font-style="normal">Services: web (Next.js), api (FastAPI), worker + scheduler + ops-worker (Celery), postgres, redis, qdrant, seaweedfs, clamav, llm-local; optional Langfuse stack.</text>
+<rect x="40" y="2658" width="270" height="176" rx="10" fill="#fff" stroke="#cbd5e1" stroke-width="1.6"/>
+<rect x="40" y="2658" width="270" height="34" rx="10" fill="#0d7aa3"/><rect x="40" y="2678" width="270" height="14" fill="#0d7aa3"/>
+<text x="54" y="2682" text-anchor="start" font-size="16" fill="#fff" font-weight="700" font-style="normal">Voice chat</text>
+<text x="54" y="2718" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Mic → WebSocket relay → Google Live</text>
+<text x="54" y="2746" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Tools: document and web search</text>
+<text x="54" y="2774" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Transcript: you | AI in two columns</text>
+<text x="54" y="2802" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Max 15 min, one session per user</text>
+<rect x="325" y="2658" width="270" height="176" rx="10" fill="#fff" stroke="#cbd5e1" stroke-width="1.6"/>
+<rect x="325" y="2658" width="270" height="34" rx="10" fill="#7c3aed"/><rect x="325" y="2678" width="270" height="14" fill="#7c3aed"/>
+<text x="339" y="2682" text-anchor="start" font-size="16" fill="#fff" font-weight="700" font-style="normal">Media studio</text>
+<text x="339" y="2718" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Image, video, speech-to-text, TTS</text>
+<text x="339" y="2746" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Celery job → OpenRouter / Google AI</text>
+<text x="339" y="2774" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Results in SeaweedFS S3, owner only</text>
+<text x="339" y="2802" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Recovery, budgets, daily limits</text>
+<rect x="610" y="2658" width="270" height="176" rx="10" fill="#fff" stroke="#cbd5e1" stroke-width="1.6"/>
+<rect x="610" y="2658" width="270" height="34" rx="10" fill="#be185d"/><rect x="610" y="2678" width="270" height="14" fill="#be185d"/>
+<text x="624" y="2682" text-anchor="start" font-size="16" fill="#fff" font-weight="700" font-style="normal">Multimodal RAG</text>
+<text x="624" y="2718" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Optional: MULTIMODAL_RAG=true</text>
+<text x="624" y="2746" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Figure pages and images get a caption</text>
+<text x="624" y="2774" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Image vectors in Qdrant (3rd ranking)</text>
+<text x="624" y="2802" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Vision models see the picture</text>
+<rect x="895" y="2658" width="270" height="176" rx="10" fill="#fff" stroke="#cbd5e1" stroke-width="1.6"/>
+<rect x="895" y="2658" width="270" height="34" rx="10" fill="#b45309"/><rect x="895" y="2678" width="270" height="14" fill="#b45309"/>
+<text x="909" y="2682" text-anchor="start" font-size="16" fill="#fff" font-weight="700" font-style="normal">Cost controls</text>
+<text x="909" y="2718" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Answer cache, prompt cache, router</text>
+<text x="909" y="2746" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Model policies, RPM/TPM/RPD limits</text>
+<text x="909" y="2774" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Monthly budget per organisation</text>
+<text x="909" y="2802" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Fallback model on 429 / 5xx</text>
+<rect x="1180" y="2658" width="270" height="176" rx="10" fill="#fff" stroke="#cbd5e1" stroke-width="1.6"/>
+<rect x="1180" y="2658" width="270" height="34" rx="10" fill="#047857"/><rect x="1180" y="2678" width="270" height="14" fill="#047857"/>
+<text x="1194" y="2682" text-anchor="start" font-size="16" fill="#fff" font-weight="700" font-style="normal">Security</text>
+<text x="1194" y="2718" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Cookie sessions, Argon2, optional OIDC</text>
+<text x="1194" y="2746" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Super Admin · Dept Admin · User</text>
+<text x="1194" y="2774" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">KB/document ACL: user, dept, group</text>
+<text x="1194" y="2802" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">PostgreSQL RLS (hub_app) + audit log</text>
+<rect x="1465" y="2658" width="270" height="176" rx="10" fill="#fff" stroke="#cbd5e1" stroke-width="1.6"/>
+<rect x="1465" y="2658" width="270" height="34" rx="10" fill="#475569"/><rect x="1465" y="2678" width="270" height="14" fill="#475569"/>
+<text x="1479" y="2682" text-anchor="start" font-size="16" fill="#fff" font-weight="700" font-style="normal">Operations</text>
+<text x="1479" y="2718" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Celery beat: maintenance + 24 h backups</text>
+<text x="1479" y="2746" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Encrypted backups, safety snapshot</text>
+<text x="1479" y="2774" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">ClamAV, alerts, infrastructure health</text>
+<text x="1479" y="2802" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Langfuse traces, Ragas scores</text>
+<text x="60" y="2884" text-anchor="start" font-size="13" fill="#475569" font-weight="400" font-style="normal">Every query is filtered by tenant and ACL in the API, in Qdrant and by PostgreSQL row-level security. Drawn from the code in apps/api/hub.</text>
+<text x="60" y="2904" text-anchor="start" font-size="13" fill="#475569" font-weight="400" font-style="normal">Services: web (Next.js), api (FastAPI), worker + scheduler + ops-worker (Celery), postgres, redis, qdrant, seaweedfs, clamav, llm-local; optional Langfuse stack.</text>
+<text x="60" y="2924" text-anchor="start" font-size="13" fill="#475569" font-weight="400" font-style="normal">The UI is in Thai and English (names are shown in the page language); voice chat accepts only Thai and English. Delivery: Docker Compose (dev, production baseline, Langfuse overlay), loopback-only host ports, migrations run on start.</text>
 </svg>

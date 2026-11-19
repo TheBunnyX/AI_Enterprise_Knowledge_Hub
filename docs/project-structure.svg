@@ -34,7 +34,7 @@
   <text x="306" y="266" class="m">hub/</text><text x="306" y="284" class="n">auth, ingestion, search, chat,</text><text x="306" y="302" class="n">agent, admin, backups, tracing</text>
   <text x="306" y="328" class="m">migrations/</text><text x="306" y="346" class="n">Alembic schema history</text>
   <text x="306" y="372" class="m">eval/</text><text x="306" y="390" class="n">retrieval and answer evaluation</text>
-  <text x="306" y="416" class="m">tests/</text><text x="400" y="416" class="n">274 backend tests</text>
+  <text x="306" y="416" class="m">tests/</text><text x="400" y="416" class="n">351 backend tests</text>
 
   <!-- infra -->
   <rect x="560" y="182" width="220" height="250" rx="12" class="card"/>

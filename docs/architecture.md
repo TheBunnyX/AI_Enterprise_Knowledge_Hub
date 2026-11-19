@@ -38,7 +38,7 @@ No evidence returns an explicit uncertainty response with no citations. Demo ref
 
 ## Identity
 
-Local password login uses Argon2. Opaque session tokens are random and only their SHA-256 digest is stored. Sessions last 8 hours and are revalidated against user and organization status per request. The OIDC adapter uses authorization code flow, PKCE S256, state cookie plus expiring server record, nonce, RS256 signature/JWKS, issuer and audience checks, verified email, and preprovisioned user mapping. Identity Provider roles cannot elevate local permissions.
+Local password login uses Argon2. Opaque session tokens are random and only their SHA-256 digest is stored. Sessions last 24 hours from sign-in (`SESSION_HOURS`, 15 minutes to 30 days) and are revalidated against user and organization status per request. The OIDC adapter uses authorization code flow, PKCE S256, state cookie plus expiring server record, nonce, RS256 signature/JWKS, issuer and audience checks, verified email, and preprovisioned user mapping. Identity Provider roles cannot elevate local permissions.
 
 Production disables demo by default and sets Secure cookies when `APP_ENV=production`. No public signup or automatic tenant provisioning exists.
 
