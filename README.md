@@ -105,7 +105,31 @@ In development always run Compose with `-f compose.yaml -f compose.dev.yaml`.
 
 ## Architecture
 
-![System architecture](docs/architecture.svg)
+**Ingestion and retrieval** — how a document becomes searchable and how a question is answered
+
+![Ingestion and retrieval](docs/architecture-core.svg)
+
+**Agent, AI skills and approvals**
+
+![Agent, AI skills and approvals](docs/architecture-agent.svg)
+
+**Media, voice and generated files**
+
+![Media, voice and generated files](docs/architecture-media.svg)
+
+**Identity, departments and administration**
+
+![Identity, departments and administration](docs/architecture-identity.svg)
+
+**Operations and quality**
+
+![Operations and quality](docs/architecture-operations.svg)
+
+**Platform services**
+
+![Platform services](docs/architecture-platform.svg)
+
+The six diagrams are crops of one source drawing, [docs/architecture.svg](docs/architecture.svg).
 
 ### Components
 
