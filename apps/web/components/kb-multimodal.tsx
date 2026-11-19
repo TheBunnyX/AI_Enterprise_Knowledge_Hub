@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { ImageIcon } from 'lucide-react';
-import { api, type KB } from './api';
+import { api, localName, type KB } from './api';
 import { Button } from './ui/button';
 import { Checkbox } from './ui/checkbox';
 import { tr } from '../lib/i18n';
@@ -14,7 +14,7 @@ export function KbMultimodal({ bases, notify, refresh }: { bases: KB[]; notify: 
   const toggle = async (b: KB, on: boolean) => {
     setBusy(b.id);
     try {
-      await api('/knowledge-bases/' + b.id, { method: 'PUT', body: JSON.stringify({ name: b.name, description: b.description || '', multimodal: on }) });
+      await api('/knowledge-bases/' + b.id, { method: 'PUT', body: JSON.stringify({ name: b.name, name_en: b.name_en || '', description: b.description || '', multimodal: on }) });
       refresh();
       notify(on ? tr('เปิดแล้ว กดอัปเดตเอกสารเพื่อประมวลผลภาพของเอกสารเดิม') : tr('ปิดแล้ว กดอัปเดตเอกสารเพื่อลบข้อมูลภาพออกจากดัชนี'));
     } catch (e) { notify((e as Error).message); }
@@ -34,7 +34,7 @@ export function KbMultimodal({ bases, notify, refresh }: { bases: KB[]; notify: 
     <p className="muted small">{tr('เปิดเฉพาะคลังที่มีกราฟ แผนภาพ หรือหน้าสแกน ภาพจะถูกส่งไปยัง Google AI เพื่ออธิบายและทำเวกเตอร์ ค่าใช้จ่ายเกิดเฉพาะคลังที่เปิด')}</p>
     <div className="grid gap-2">
       {mine.map(b => <div key={b.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">
-        <label className="flex items-center gap-2 text-sm font-medium"><Checkbox checked={!!b.multimodal} disabled={busy === b.id} onCheckedChange={v => toggle(b, v === true)} aria-label={tr('ประมวลผลภาพ') + ' ' + b.name} />{b.name}<span className="muted small font-normal">{tr('ประมวลผลภาพ')}</span></label>
+        <label className="flex items-center gap-2 text-sm font-medium"><Checkbox checked={!!b.multimodal} disabled={busy === b.id} onCheckedChange={v => toggle(b, v === true)} aria-label={tr('ประมวลผลภาพ') + ' ' + b.name} />{localName(b)}<span className="muted small font-normal">{tr('ประมวลผลภาพ')}</span></label>
         <Button type="button" variant="outline" size="sm" disabled={busy === b.id} onClick={() => apply(b)}>{tr('อัปเดตเอกสาร')}</Button>
       </div>)}
     </div>

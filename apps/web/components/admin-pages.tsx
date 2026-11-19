@@ -1,14 +1,15 @@
 'use client';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { ArrowRight, Boxes, Building2, ChartNoAxesCombined, CheckCircle2, Coins, Database, Download, FileText, Globe, HardDrive, KeyRound, Library, MessagesSquare, Search, ShieldCheck, Users, Zap } from 'lucide-react';
 import { tr, useLang } from '../lib/i18n';
-import { api, date, fmt, money, money4, type Analytics, type Audit, type Org } from './api';
+import { api, usageLabel, date, fmt, money, money4, type Analytics, type Audit, type Org } from './api';
 import { Blank, COLORS, SERIES, STATUS, Stat, bytes, price, type Series } from './analytics';
 import { BudgetNotice } from './features';
 import { H1 } from './page-title';
+import { useConfirm } from './ui/confirm';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -81,7 +82,7 @@ export function AdminOverview() {
           {a?.models.length ? <>
             <div className="donut-chart"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={modelShare} dataKey="value" innerRadius={65} outerRadius={88} paddingAngle={0} stroke="none">{modelShare.map((m, i) => <Cell key={m.name} fill={m.other ? COLORS[5] : COLORS[i % COLORS.length]} />)}</Pie><Tooltip /></PieChart></ResponsiveContainer>
               <div><small>{tr('ทั้งหมด')}</small><strong>{fmt(a.requests)}</strong><small>{tr('คำถาม')}</small></div></div>
-            <div className="chart-legend w-full">{modelShare.map((m, i) => <div key={m.name}><i style={{ background: m.other ? COLORS[5] : COLORS[i % COLORS.length] }} /><span>{m.name}</span><strong>{fmt(m.value)}</strong></div>)}</div>
+            <div className="chart-legend w-full">{modelShare.map((m, i) => <div key={m.name}><i style={{ background: m.other ? COLORS[5] : COLORS[i % COLORS.length] }} /><span>{usageLabel(m.name)}</span><strong>{fmt(m.value)}</strong></div>)}</div>
           </> : <Blank icon={Boxes} title={tr('ยังไม่มีการเรียกโมเดล')} text={tr('สถิติจะแสดงเมื่อเริ่มใช้งาน')} />}
         </CardContent>
       </Card>
@@ -150,7 +151,7 @@ export function AdminBilling() {
         <CardHeader><CardTitle>{tr('การใช้งานแยกตามโมเดล')}</CardTitle><CardDescription>{tr('คำถาม โทเคน และค่าใช้จ่ายของแต่ละโมเดล')}</CardDescription></CardHeader>
         <CardContent>
           {a?.model_rows?.length ? <><Table><TableHeader><TableRow><TableHead>{tr('โมเดล')}</TableHead><TableHead className="text-right">{tr('คำถาม')}</TableHead><TableHead className="text-right">{tr('โทเคนเข้า')}</TableHead><TableHead className="text-right">{tr('โทเคนออก')}</TableHead><TableHead className="text-right">{tr('ค่าใช้จ่าย')}</TableHead></TableRow></TableHeader>
-            <TableBody>{[...a.model_rows].sort((x, y) => y.cost - x.cost).slice(0, modelRows).map((m) => <TableRow key={m.name}><TableCell className="max-w-56 truncate font-medium">{m.name}</TableCell><TableCell className="text-right">{fmt(m.requests)}</TableCell><TableCell className="text-right">{fmt(m.input_tokens)}</TableCell><TableCell className="text-right">{fmt(m.output_tokens)}</TableCell><TableCell className="text-right tabular-nums">{money4(m.cost)}</TableCell></TableRow>)}</TableBody></Table>
+            <TableBody>{[...a.model_rows].sort((x, y) => y.cost - x.cost).slice(0, modelRows).map((m) => <TableRow key={m.name}><TableCell className="max-w-56 truncate font-medium">{usageLabel(m.name)}</TableCell><TableCell className="text-right">{fmt(m.requests)}</TableCell><TableCell className="text-right">{fmt(m.input_tokens)}</TableCell><TableCell className="text-right">{fmt(m.output_tokens)}</TableCell><TableCell className="text-right tabular-nums">{money4(m.cost)}</TableCell></TableRow>)}</TableBody></Table>
             {a.model_rows.length > modelRows && <div className="mt-3 flex justify-center"><Button variant="outline" size="sm" onClick={() => setModelRows(modelRows + 20)}>{tr('แสดงเพิ่ม ({v1} รายการ)', { v1: fmt(a.model_rows.length - modelRows) })}</Button></div>}</>
             : <Blank icon={Boxes} title={tr('ยังไม่มีข้อมูลโมเดล')} text={tr('ตารางจะแสดงเมื่อมีการเรียกใช้')} />}
         </CardContent>
@@ -177,7 +178,7 @@ export function AdminBilling() {
 }
 
 const MEASURES = (): [string, string][] => [
-  [tr('เซสชัน HttpOnly'), tr('คุกกี้เซสชันมีอายุ 8 ชั่วโมง และยกเลิกได้เมื่อออกจากระบบ')],
+  [tr('เซสชัน HttpOnly'), tr('การเข้าสู่ระบบมีอายุ 1 วัน นับจากเวลาที่เข้าสู่ระบบ และยกเลิกได้เมื่อออกจากระบบ')],
   [tr('การแยกข้อมูลระหว่างองค์กร'), tr('ตรวจสอบ tenant_id ทุกครั้งก่อนเข้าถึงเอกสาร คลังความรู้ และบทสนทนา')],
   [tr('บทบาทและสิทธิ์การใช้งาน'), tr('API ผู้ดูแลต้องมีบทบาท SUPER_ADMIN และผู้ชมไม่สามารถแก้ไขเอกสาร')],
   [tr('ป้องกันการส่งคำขอข้ามเว็บไซต์'), tr('ตรวจสอบ Origin สำหรับคำขอแก้ไขข้อมูล และปฏิเสธคำขอ cross-site')],
@@ -185,7 +186,11 @@ const MEASURES = (): [string, string][] => [
 ];
 
 /** Who may do what, which protections are live right now, and the audit trail. No spending here. */
-export function SecurityPage({ audit }: { audit: Audit[] }) {
+export function SecurityPage({ audit, notify }: { audit: Audit[]; notify: (message: string) => void }) {
+  const confirm = useConfirm();
+  const qc = useQueryClient();
+  const [saving, setSaving] = useState(false);
+  const scanner = useQuery({ queryKey: ['antivirus'], queryFn: () => api<{ enabled: boolean; configured: boolean; required: boolean }>('/admin/antivirus') });
   const [find, setFind] = useState('');
   const [rows, setRows] = useState(10);
   const [exportDays, setExportDays] = useState('30');
@@ -194,9 +199,20 @@ export function SecurityPage({ audit }: { audit: Audit[] }) {
   const policy = useQuery({ queryKey: ['savings-policy'], queryFn: () => api<{ web_search?: 'off' | 'ask' | 'always' }>('/savings/policy') });
   const events = useMemo(() => audit.filter((e) => !find.trim() || `${e.actor} ${e.action} ${e.detail} ${e.ip || ''}`.toLowerCase().includes(find.trim().toLowerCase())), [audit, find]);
   const virus = health.data?.checks?.antivirus;
+  const scanning = scanner.data?.enabled;
+  const switchScanner = async (next: boolean) => {
+    if (!next && !(await confirm({ title: tr('ปิดการสแกนไวรัส'), text: tr('ไฟล์ที่อัปโหลดจะไม่ถูกตรวจหาไวรัสจนกว่าจะเปิดอีกครั้ง ใช้เมื่อระบบนี้ไม่ได้ติดตั้ง ClamAV เท่านั้น การปิดจะถูกบันทึกในบันทึกการใช้งาน'), danger: true, confirmLabel: tr('ปิดการสแกน') }))) return;
+    setSaving(true);
+    try { await api('/admin/antivirus', { method: 'PUT', body: JSON.stringify({ enabled: next }) }); notify(next ? tr('เปิดการสแกนไวรัสแล้ว') : tr('ปิดการสแกนไวรัสแล้ว')); for (const key of ['antivirus', 'ops-health', 'system-health', 'audit']) qc.invalidateQueries({ queryKey: [key] }); }
+    catch (e) { notify((e as Error).message); } finally { setSaving(false); }
+  };
   const web = policy.data?.web_search || 'ask';
-  const controls: { icon: typeof ShieldCheck; title: string; ok: boolean | null; label: string; note: string }[] = [
-    { icon: ShieldCheck, title: tr('สแกนไวรัส (ClamAV)'), ok: virus === undefined ? null : virus === 'healthy', label: virus === undefined ? tr('กำลังตรวจสอบ') : virus === 'healthy' ? tr('ทำงานปกติ') : tr('ไม่พร้อมใช้งาน'), note: tr('ไฟล์ที่อัปโหลดถูกสแกนก่อนอ่านหรือเก็บ ถ้าตัวสแกนล่ม ระบบจะไม่รับไฟล์') },
+  const controls: { icon: typeof ShieldCheck; title: string; ok: boolean | null; label: string; note: string; action?: React.ReactNode }[] = [
+    { icon: ShieldCheck, title: tr('สแกนไวรัส (ClamAV)'),
+      ok: scanning === undefined ? null : !scanning ? false : virus === undefined ? null : virus === 'healthy',
+      label: scanning === undefined ? tr('กำลังตรวจสอบ') : !scanning ? tr('ปิดอยู่ (ไม่สแกนไฟล์)') : virus === undefined ? tr('กำลังตรวจสอบ') : virus === 'healthy' ? tr('ทำงานปกติ') : tr('ไม่พร้อมใช้งาน'),
+      note: scanning === false ? tr('ไฟล์ที่อัปโหลดจะไม่ถูกตรวจหาไวรัสจนกว่าจะเปิดอีกครั้ง') : scanner.data && !scanner.data.configured ? tr('ระบบนี้ไม่ได้ตั้งค่า ClamAV ถ้าไม่ได้ใช้ สามารถปิดการสแกนได้') : tr('ไฟล์ที่อัปโหลดถูกสแกนก่อนอ่านหรือเก็บ ถ้าตัวสแกนล่ม ระบบจะไม่รับไฟล์'),
+      action: scanner.data ? <label className="check-label mt-2" style={{ fontSize: 13 }}><input type="checkbox" checked={scanner.data.enabled} disabled={saving} onChange={(e) => switchScanner(e.target.checked)} aria-label={tr('เปิดการสแกนไวรัส')} /><span>{tr('เปิดการสแกนไวรัส')}</span></label> : undefined },
     { icon: KeyRound, title: tr('เข้ารหัสชุดสำรอง'), ok: backups.data ? backups.data.encryption_configured : null, label: !backups.data ? tr('กำลังตรวจสอบ') : backups.data.encryption_configured ? tr('เข้ารหัสพร้อมใช้งาน') : tr('ยังไม่มีคีย์เข้ารหัส'), note: tr('ชุดสำรองและคีย์ผู้ให้บริการถูกเข้ารหัสก่อนเก็บ') },
     { icon: Globe, title: tr('การค้นเว็บ'), ok: policy.data ? web !== 'always' : null, label: !policy.data ? tr('กำลังตรวจสอบ') : web === 'off' ? tr('ห้ามค้นเว็บ') : web === 'ask' ? tr('ต้องขออนุญาต') : tr('ค้นได้โดยไม่ถาม'), note: tr('คำค้นถูกส่งออกนอกองค์กร ตั้งค่าได้ที่หน้าประหยัดค่าใช้จ่าย') },
   ];
@@ -209,7 +225,7 @@ export function SecurityPage({ audit }: { audit: Audit[] }) {
     <div className="grid gap-4 md:grid-cols-3" data-testid="security-controls">
       {controls.map((c) => <Card key={c.title} className="gap-0 py-4"><CardContent className="flex items-start gap-3 px-4">
         <span className={`grid size-11 shrink-0 place-items-center rounded-2xl ${c.ok === null ? 'bg-slate-500/10 text-slate-500' : c.ok ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-600'}`}><c.icon className="size-5" /></span>
-        <div className="min-w-0"><p className="text-sm text-muted-foreground">{c.title}</p><strong className="block text-base leading-tight">{c.label}</strong><small className="block text-xs text-muted-foreground">{c.note}</small></div>
+        <div className="min-w-0"><p className="text-sm text-muted-foreground">{c.title}</p><strong className="block text-base leading-tight">{c.label}</strong><small className="block text-xs text-muted-foreground">{c.note}</small>{c.action}</div>
       </CardContent></Card>)}
     </div>
 

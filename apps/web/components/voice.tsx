@@ -5,7 +5,7 @@ import {useQuery} from '@tanstack/react-query';
 import {Mic,PhoneOff,Volume2,Loader2,Hand,Globe,FileSearch,MessagesSquare,Languages} from 'lucide-react';
 import {cn} from '@/lib/utils';
 import { tr } from '../lib/i18n';
-import {api,type KB,type Model} from './api';
+import {api,localName,type KB,type Model} from './api';
 import {Button} from './ui/button';
 import {H1} from './page-title';
 import {VoicePicker,DEFAULT_VOICE} from './voice-picker';
@@ -135,7 +135,7 @@ export function VoicePage({kbs,notify}:{kbs:KB[];notify:Notify}){
  const finishUtterance=useCallback(async(blob:Blob)=>{
   const e=box.current;setP('thinking');
   try{
-   const f=new FormData();f.append('file',blob,'speech.webm');f.append('language','th');
+   const f=new FormData();f.append('file',blob,'speech.webm');f.append('language','auto');
    const x=await fetch('/api/voice/transcribe',{method:'POST',body:f});
    if(!x.ok)throw new Error((await x.json().catch(()=>({}))).detail||tr('ถอดเสียงไม่สำเร็จ'));
    const {text}=await x.json();
@@ -219,7 +219,7 @@ export function VoicePage({kbs,notify}:{kbs:KB[];notify:Notify}){
      {([[true,tr('ตอบจากเอกสาร'),FileSearch],[false,tr('คุยทั่วไป'),MessagesSquare]] as const).map(([v,l,Icon])=><button key={l} type="button" aria-pressed={docs===v} disabled={on&&live} onClick={()=>setDocs(v)} className={cn('inline-flex items-center justify-center gap-1.5 rounded-full px-3 py-2 font-medium transition-colors',docs===v?'bg-background text-primary shadow-xs':'text-muted-foreground hover:text-foreground')}><Icon className="size-4"/>{l}</button>)}
     </div>
     <Button type="button" variant={web&&webOk?'default':'outline'} size="sm" className="h-9 w-full justify-center gap-1.5 rounded-full px-3 text-xs" aria-label={tr('ค้นเว็บ')} aria-pressed={web&&webOk&&webAllowed} disabled={!webOk||!webAllowed||(on&&live)} onClick={()=>setWeb(!web)} title={!webAllowed?tr('องค์กรปิดการค้นเว็บ'):webOk?tr('ให้ AI ค้นเว็บเองเมื่อจำเป็น (คำค้นจะถูกส่งออกนอกองค์กร)'):tr('ต้องมีโมเดล LLM ที่ไม่ใช่โหมดสาธิต')}><Globe className="size-4"/>{tr('ค้นเว็บ')}</Button>
-    {docs&&<Sel aria-label={tr('เลือกคลังความรู้')} value={kb} disabled={on} onChange={ev=>setKb(ev.target.value)} className="w-full"><option value="">{tr('ทุกคลังความรู้')}</option>{kbs.map(k=><option key={k.id} value={k.id}>{k.name}</option>)}</Sel>}
+    {docs&&<Sel aria-label={tr('เลือกคลังความรู้')} value={kb} disabled={on} onChange={ev=>setKb(ev.target.value)} className="w-full"><option value="">{tr('ทุกคลังความรู้')}</option>{kbs.map(k=><option key={k.id} value={k.id}>{localName(k)}</option>)}</Sel>}
     </>}
    </div>
   </section>

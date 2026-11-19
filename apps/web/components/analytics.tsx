@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Boxes, ChartNoAxesCombined, Coins, Database, Download, FileText, HardDrive, Library, MessagesSquare, Search, Users, Zap, type LucideIcon } from 'lucide-react';
 import { tr, useLang } from '../lib/i18n';
-import { api, date, fmt, money, money4, type Analytics, type Audit } from './api';
+import { api, usageLabel, date, fmt, money, money4, type Analytics, type Audit } from './api';
 import { BudgetNotice } from './features';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -99,7 +99,7 @@ export function AnalyticsPage({ data, audit }: { data?: Analytics; audit: Audit[
           {a?.models.length ? <>
             <div className="donut-chart"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={modelShare} dataKey="value" innerRadius={65} outerRadius={88} paddingAngle={0} stroke="none">{modelShare.map((m, i) => <Cell key={m.name} fill={m.other ? COLORS[5] : COLORS[i % COLORS.length]} />)}</Pie><Tooltip /></PieChart></ResponsiveContainer>
               <div><small>{tr('ทั้งหมด')}</small><strong>{fmt(a.requests)}</strong><small>{tr('คำถาม')}</small></div></div>
-            <div className="chart-legend w-full">{modelShare.map((m, i) => <div key={m.name}><i style={{ background: m.other ? COLORS[5] : COLORS[i % COLORS.length] }} /><span>{m.name}</span><strong>{fmt(m.value)}</strong></div>)}</div>
+            <div className="chart-legend w-full">{modelShare.map((m, i) => <div key={m.name}><i style={{ background: m.other ? COLORS[5] : COLORS[i % COLORS.length] }} /><span>{usageLabel(m.name)}</span><strong>{fmt(m.value)}</strong></div>)}</div>
           </> : <Blank icon={Boxes} title={tr('ยังไม่มีการเรียกโมเดล')} text={tr('สถิติจะแสดงเมื่อเริ่มใช้งาน')} />}
         </CardContent>
       </Card>
@@ -110,7 +110,7 @@ export function AnalyticsPage({ data, audit }: { data?: Analytics; audit: Audit[
         <CardHeader><CardTitle>{tr('การใช้งานแยกตามโมเดล')}</CardTitle><CardDescription>{tr('คำถาม โทเคน และค่าใช้จ่ายของแต่ละโมเดล')}</CardDescription></CardHeader>
         <CardContent>
           {a?.model_rows?.length ? <Table><TableHeader><TableRow><TableHead>{tr('โมเดล')}</TableHead><TableHead className="text-right">{tr('คำถาม')}</TableHead><TableHead className="text-right">{tr('โทเคนเข้า')}</TableHead><TableHead className="text-right">{tr('โทเคนออก')}</TableHead><TableHead className="text-right">{tr('ค่าใช้จ่าย')}</TableHead></TableRow></TableHeader>
-            <TableBody>{a.model_rows.map((m) => <TableRow key={m.name}><TableCell className="max-w-56 truncate font-medium">{m.name}</TableCell><TableCell className="text-right">{fmt(m.requests)}</TableCell><TableCell className="text-right">{fmt(m.input_tokens)}</TableCell><TableCell className="text-right">{fmt(m.output_tokens)}</TableCell><TableCell className="text-right tabular-nums">{money4(m.cost)}</TableCell></TableRow>)}</TableBody></Table>
+            <TableBody>{a.model_rows.map((m) => <TableRow key={m.name}><TableCell className="max-w-56 truncate font-medium">{usageLabel(m.name)}</TableCell><TableCell className="text-right">{fmt(m.requests)}</TableCell><TableCell className="text-right">{fmt(m.input_tokens)}</TableCell><TableCell className="text-right">{fmt(m.output_tokens)}</TableCell><TableCell className="text-right tabular-nums">{money4(m.cost)}</TableCell></TableRow>)}</TableBody></Table>
             : <Blank icon={Boxes} title={tr('ยังไม่มีข้อมูลโมเดล')} text={tr('ตารางจะแสดงเมื่อมีการเรียกใช้')} />}
         </CardContent>
       </Card>

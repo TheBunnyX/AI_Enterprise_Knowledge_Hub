@@ -11,6 +11,9 @@ const PTS=(()=>{ // Fibonacci sphere: evenly spread points with their latitude/l
  return a})();
 
 /** A glowing sphere of particles whose surface ripples with the voice (the user's microphone or the AI's speech). */
+/** The ball's radius as a share of the canvas. 0.3276 = the earlier 0.252 made 30% larger. */
+export const ORB_RADIUS=0.252*1.3;
+
 export function VoiceOrb({phase,mic,out,size=572}:{phase:Phase;mic:number;out:MutableRefObject<number>;size?:number}){
  const ref=useRef<HTMLCanvasElement>(null);
  const live=useRef({phase,mic});live.current={phase,mic};
@@ -26,7 +29,7 @@ export function VoiceOrb({phase,mic,out,size=572}:{phase:Phase;mic:number;out:Mu
    const idle=ph==='idle'?0.35:1;
    t+=dt*(1+e*2+(ph==='thinking'?1.6:0));spin+=dt*(0.18+e*0.5+(ph==='thinking'?0.7:0));
    const amp=(0.03+e*0.17)*idle;
-   const R=size*0.252,cx=size/2,cy=size/2;
+   const R=size*ORB_RADIUS,cx=size/2,cy=size/2;
    const dark=document.documentElement.classList.contains('dark'); // additive glow needs a dark page; on light pages draw darker, opaque dots
    ctx.globalCompositeOperation='source-over';ctx.clearRect(0,0,size,size);
    // colour tells who is speaking: the user is warm pink/orange, the AI is cyan-blue, thinking is violet
@@ -34,7 +37,7 @@ export function VoiceOrb({phase,mic,out,size=572}:{phase:Phase;mic:number;out:Mu
    const hueTarget=ph==='speaking'?198:userTalking?338:ph==='thinking'?262:232;
    hue+=(hueTarget-hue)*Math.min(1,dt*7);
    const hue0=hue;
-   const glow=ctx.createRadialGradient(cx,cy,R*0.2,cx,cy,R*(1.55+e*0.5));
+   const glow=ctx.createRadialGradient(cx,cy,R*0.2,cx,cy,Math.min(size/2,R*(1.55+e*0.5)));  // a larger ball must not push its glow past the canvas edge
    glow.addColorStop(0,`hsla(${hue0},90%,55%,${(0.16+e*0.25)*(dark?1:0.45)})`);glow.addColorStop(1,'hsla(240,90%,50%,0)');
    ctx.fillStyle=glow;ctx.fillRect(0,0,size,size);
    ctx.globalCompositeOperation=dark?'lighter':'source-over';

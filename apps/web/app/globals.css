@@ -115,3 +115,9 @@ a.sidebar-help{text-decoration:none}a.sidebar-help svg:last-child{margin-left:0}
 
 .price-sync-heading{display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin-bottom:14px}.price-sync-heading .muted{max-width:78ch}
 .price-sync-toggle{display:inline-flex;flex-direction:row!important;align-items:center;justify-content:flex-start;gap:10px;font-weight:550;cursor:pointer;width:fit-content}.price-sync-toggle input[type=checkbox]{width:18px;height:18px;padding:0;margin:0;accent-color:var(--primary);flex:none}
+
+.pdf-reader .pdf-scroll.pdf-scroll-continuous{max-height:none;flex:1 1 0;min-height:0;padding:6px;scroll-behavior:auto}
+/* A tall menu must scroll inside the sidebar, never squeeze the logo or the other blocks. */
+.sidebar{overflow-y:auto;overscroll-behavior:contain}
+.sidebar>*{flex-shrink:0}
+.sidebar .brand-mark{min-width:35px;min-height:38px}

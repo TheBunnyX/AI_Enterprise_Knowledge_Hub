@@ -3,7 +3,7 @@ import { Sel } from './ui/sel';
 import {useEffect,useState,type FormEvent} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {Check,Gauge,Globe,PiggyBank,Zap} from 'lucide-react';
-import {api,post,fmt,money,date} from './api';
+import {api,post,usageLabel,fmt,money,date} from './api';
 import { tr } from '../lib/i18n';
 import {Button} from './ui/button';
 import {useConfirm} from './ui/confirm';
@@ -45,7 +45,7 @@ export function SavingsPage({notify}:{notify:Notify}){
    <div className="card metric"><div><p>{tr('Embedding ที่ใช้ซ้ำ')}</p><strong>{tr('{v1} ชุด',{v1:fmt(r?.savings.embedding_batches_cached)})}</strong><small>{tr('ไม่ต้องจ่ายซ้ำเมื่อข้อความเดิมถูกประมวลผลอีก')}</small></div></div>
   </div>
   <div className="chart-columns" style={{marginBottom:20}}>
-   <div className="card padded"><div className="section-heading"><h2>{tr('ค่าใช้จ่ายแยกตามโมเดล')}</h2></div><Rows empty={tr('ยังไม่มีการใช้งาน')} rows={(r?.by_model||[]).map(m=>({label:m.model,requests:m.requests,cost:m.cost}))}/></div>
+   <div className="card padded"><div className="section-heading"><h2>{tr('ค่าใช้จ่ายแยกตามโมเดล')}</h2></div><Rows empty={tr('ยังไม่มีการใช้งาน')} rows={(r?.by_model||[]).map(m=>({label:usageLabel(m.model),requests:m.requests,cost:m.cost}))}/></div>
    <div className="card padded"><div className="section-heading"><h2>{tr('แยกตามฝ่าย')}</h2></div><Rows empty={tr('ยังไม่มีการใช้งาน')} rows={(r?.by_department||[]).map(m=>({label:m.name,requests:m.requests,cost:m.cost}))}/></div>
   </div>
   <div className="card padded" style={{marginBottom:20}}><div className="section-heading"><h2>{tr('ผู้ใช้ที่ใช้มากที่สุด')}</h2></div><Rows empty={tr('ยังไม่มีการใช้งาน')} rows={(r?.top_users||[]).map(m=>({label:m.name,sub:m.email,requests:m.requests,cost:m.cost}))}/></div>

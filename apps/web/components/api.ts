@@ -1,11 +1,11 @@
 import {tr,getLang,LOCALE} from '../lib/i18n';
 export const ROLES=['SUPER_ADMIN','DEPARTMENT_ADMIN','USER'] as const;
 export const roleLabel=(role:string)=>({SUPER_ADMIN:'Super Admin',DEPARTMENT_ADMIN:tr('ผู้ดูแลแผนก'),USER:tr('ผู้ใช้')} as Record<string,string>)[role]||role;
-export type User={id:string;name:string;email:string;role:string;tenant_id:string;active?:boolean;online?:boolean};
-export type Doc={id:string;can_write?:boolean;name:string;knowledge_base_id:string;size:number;status:string;error:string;version:number;created_at:string};
-export type KB={id:string;name:string;description:string;documents:number;multimodal?:boolean;department_id?:string;department?:string;can_write?:boolean};
+export type User={id:string;name:string;name_en?:string;email:string;role:string;tenant_id:string;active?:boolean;online?:boolean};
+export type Doc={id:string;can_write?:boolean;name:string;name_en?:string;knowledge_base_id:string;size:number;status:string;error:string;version:number;created_at:string};
+export type KB={id:string;name:string;name_en?:string;description:string;documents:number;multimodal?:boolean;department_id?:string;department?:string;department_en?:string;can_write?:boolean};
 export type Source={id:string;url:string;interval_minutes:number;enabled:boolean;document_id:string;last_checked:string;last_status:string;last_error:string};
-export type Citation={number?:number;version?:number;document_id:string;chunk_id:string;name:string;page:number;snippet:string;score?:number;rerank_score?:number;url?:string;kind?:string};
+export type Citation={number?:number;version?:number;document_id:string;chunk_id:string;name:string;name_en?:string;page:number;snippet:string;score?:number;rerank_score?:number;url?:string;kind?:string};
 export type Message={id?:string;role:string;content:string;citations:Citation[]};
 /** What a paused agent run waits for: a clarifying question (with optional quick replies) or approval to search the web. */
 export type AgentPending={kind:'question'|'approval';tool?:'web_search'|'save_to_library';question?:string;options?:string[];queries?:string[];file?:string;knowledge_base?:string};
@@ -22,9 +22,20 @@ export type Org={id:string;name:string;status:string;quota:number;users:number;d
 export type Audit={id:string;actor:string;action:string;detail:string;ip?:string;created_at:string};
 export type Analytics={scope?:'organization'|'department'|'self';organizations:number;users:number;documents:number;storage_bytes:number;requests:number;cost:number;input_tokens:number;output_tokens:number;daily:{date:string;requests:number;cost:number;input_tokens:number;output_tokens:number}[];models:{name:string;value:number}[];model_rows:{name:string;requests:number;input_tokens:number;output_tokens:number;cost:number}[];top_users:{name:string;requests:number;input_tokens:number;output_tokens:number;cost:number}[];knowledge_bases:number;conversations:number;messages:number;document_status:Record<string,number>;days:number;estimated:boolean};
 export type Conversation={id:string;title:string;created_at:string};
+/** A usage label such as "เสียง · สด (Live) · Gemini 3.8 Live": the fixed Thai parts are translated, model names stay. */
+export const usageLabel=(name:string)=>name.split(' · ').map(p=>tr(p)).join(' · ');
+/** A status line from the chat stream: fixed phrases are translated, "prefix: text" keeps the text (a web query) as it is. */
+export const trStatus=(t:string)=>{const m=t.match(/^(?:อ่านไฟล์แนบ (\d+) ไฟล์ )?(?:พบ (\d+) แหล่งในเอกสาร )?กำลังส่งให้โมเดล$/);if(m)return [m[1]?tr('อ่านไฟล์แนบ {n} ไฟล์',{n:m[1]}):'',m[2]?tr('พบ {n} แหล่งในเอกสาร',{n:m[2]}):'',tr('กำลังส่งให้โมเดล')].filter(Boolean).join(' · ');const i=t.indexOf(': ');return i>0&&!/\s/.test(t.slice(0,1))&&tr(t.slice(0,i))!==t.slice(0,i)?tr(t.slice(0,i))+': '+t.slice(i+2):tr(t.trim())};
+/** The name to show: the English one when the page is in English and one exists, otherwise the original (Thai) name. */
+export const localName=(o:{name:string;name_en?:string|null}|null|undefined)=>!o?'':(getLang()==='en'&&o.name_en?o.name_en:o.name);
+/** The other language's name, shown small beside the main one when both exist. */
+export const otherName=(o:{name:string;name_en?:string|null}|null|undefined)=>!o||!o.name_en?'':(getLang()==='en'?o.name:o.name_en);
+/** Department names of a user list row, in the page's language (the English list falls back to the Thai names). */
+export const deptNames=(u:{departments?:string[];departments_en?:string[]})=>(getLang()==='en'&&u.departments_en?.length?u.departments_en:u.departments)||[];
 export async function api<T>(path:string,init?:RequestInit):Promise<T>{
  const r=await fetch('/api'+path,{...init,headers:{...(!(init?.body instanceof FormData)?{'Content-Type':'application/json'}:{}),...init?.headers}});
- if(!r.ok){let message=tr('เกิดข้อผิดพลาด ({n})',{n:r.status});try{const j=await r.json();message=typeof j.detail==='string'?j.detail:tr('กรุณาตรวจสอบข้อมูลที่กรอก')}catch{};throw new Error(message)}
+ if(!r.ok){let message=tr('เกิดข้อผิดพลาด ({n})',{n:r.status});try{const j=await r.json();message=typeof j.detail==='string'?tr(j.detail):tr('กรุณาตรวจสอบข้อมูลที่กรอก')}catch{};throw new Error(message)}
+ if(r.status===204)return undefined as T;  // DELETE answers 204 with no body
  return r.json();
 }
 export const post=<T,>(path:string,body:unknown)=>api<T>(path,{method:'POST',body:JSON.stringify(body)});
