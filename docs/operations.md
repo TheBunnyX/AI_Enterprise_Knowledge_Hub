@@ -27,3 +27,14 @@ ClamAV ตรวจไฟล์ก่อน parser/OCR/การจัดเก�
 กระดิ่งแสดงแจ้งเตือนตามสิทธิ์ พร้อมสถานะกลับมาปกติ ไม่ใช่ external monitoring: เมื่อฐานข้อมูล/API หรือทั้งเครื่องล่มจะเปิดหน้าแจ้งเตือนไม่ได้
 
 PDF ต้นฉบับเปิดจากเอกสารหรืออ้างอิงในแชท ไฮไลต์ text layer ได้ หน้า scan ที่ไม่มี text layer แสดงต้นฉบับพร้อม OCR ในแท็บข้อความ ยังไม่มีไฮไลต์ตำแหน่ง OCR บนภาพ
+
+## Deploy from GitHub with only env vars (Dokploy)
+
+1. On the source machine: Admin → Backups → create a backup and download the `.akh` file. Host it at a private HTTPS URL
+   (e.g. a private GitHub release asset or object storage with a token).
+2. In Dokploy create a Compose app from the GitHub repo, files `compose.yaml` + `compose.prod.yaml`, and set env vars only:
+   `POSTGRES_PASSWORD`, `SECRETS_KEY` (both identical to the source), `WEB_ORIGIN=https://ai.mongkhonhatit.com`,
+   `WEB_BIND=192.168.1.12`, `SEED_BACKUP_URL`, `SEED_BACKUP_TOKEN` (optional), plus the provider keys from `.env`.
+3. Deploy. On first start the API restores the snapshot into the empty database, rebuilds the search index, and writes
+   `/data/.seed-restored` so it never runs again. Existing data is never overwritten.
+4. Change the demo account passwords afterwards (`DEMO_ACCOUNTS` stays empty in production).

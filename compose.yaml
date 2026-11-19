@@ -6,6 +6,8 @@ x-api-env: &api-env
   DATA_DIR: /data
   DEMO_ACCOUNTS: ${DEMO_ACCOUNTS:-}
   SEED_SAMPLE_DATA: ${SEED_SAMPLE_DATA:-false}
+  SEED_BACKUP_URL: ${SEED_BACKUP_URL:-}
+  SEED_BACKUP_TOKEN: ${SEED_BACKUP_TOKEN:-}
   WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3009}
   VOICE_LANGUAGES: ${VOICE_LANGUAGES:-th,en}
   DEPARTMENT_ADMIN_RESET_PASSWORD: ${DEPARTMENT_ADMIN_RESET_PASSWORD:-true}
@@ -74,7 +76,7 @@ services:
     build:
       context: .
       dockerfile: infrastructure/docker/web.Dockerfile
-    ports: ['127.0.0.1:3009:3000']
+    ports: ['${WEB_BIND:-127.0.0.1}:3009:3000']
     environment:
       API_INTERNAL_URL: http://api:8000
       WEB_BEHIND_PROXY: ${WEB_BEHIND_PROXY:-0}

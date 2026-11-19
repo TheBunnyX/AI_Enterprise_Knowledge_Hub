@@ -151,7 +151,10 @@ def read_manifest(id):
 
 def restore_snapshot(id,target_url,target_prefix=None,live=False):
     if not live and (target_url==URL or not target_prefix):raise ValueError('Rehearsal requires isolated database and storage prefix')
-    path=snapshot_path(id)
+    return restore_archive(snapshot_path(id),target_url,target_prefix,live)
+
+def restore_archive(path,target_url,target_prefix=None,live=False):
+    ROOT.mkdir(parents=True,exist_ok=True)
     with tempfile.TemporaryDirectory(dir=ROOT) as tmp:
         archive=Path(tmp)/'snapshot.zip';decrypt(path,archive)
         with zipfile.ZipFile(archive) as z:

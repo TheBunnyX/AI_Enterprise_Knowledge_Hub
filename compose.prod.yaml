@@ -1,7 +1,7 @@
 # Production-oriented baseline. Put behind HTTPS ingress; read docs/limitations.md.
 services:
   web:
-    ports: !override ['127.0.0.1:3009:3000']
+    ports: !override ['${WEB_BIND:-127.0.0.1}:3009:3000']
     environment:
       WEB_BEHIND_PROXY: ${WEB_BEHIND_PROXY:-1}  # the HTTPS ingress sets X-Forwarded-For
   api:
