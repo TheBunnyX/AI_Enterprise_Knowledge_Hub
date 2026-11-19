@@ -24,6 +24,7 @@ class User(Identity, Base):
     tenant_id: Mapped[str] = mapped_column(ForeignKey('organizations.id'), index=True)
     email: Mapped[str] = mapped_column(unique=True)
     name: Mapped[str]
+    name_en: Mapped[str] = mapped_column(default='', server_default='')  # optional English name beside the Thai one
     password_hash: Mapped[str]
     role: Mapped[str] = mapped_column(default='USER')
     active: Mapped[bool] = mapped_column(default=True)
@@ -49,6 +50,7 @@ class KnowledgeBase(Identity, Base):
     __tablename__ = 'knowledge_bases'
     tenant_id: Mapped[str] = mapped_column(ForeignKey('organizations.id'), index=True)
     name: Mapped[str]
+    name_en: Mapped[str] = mapped_column(default='', server_default='')  # optional English name beside the Thai one
     description: Mapped[str] = mapped_column(default='')
     multimodal: Mapped[bool] = mapped_column(default=False, server_default='false')  # Multimodal RAG for this library: pictures in its documents are described and embedded (sent to Google AI)
     department_id: Mapped[str] = mapped_column(default='', server_default='', index=True)  # the department (access group of kind 'department') that owns and manages it; '' = the organisation
@@ -65,6 +67,7 @@ class Document(Identity, Base):
     status: Mapped[str] = mapped_column(default='processing')
     error: Mapped[str] = mapped_column(default='')
     version: Mapped[int] = mapped_column(default=1)
+    name_en: Mapped[str] = mapped_column(default='', server_default='')  # optional English display name; `name` stays the real file name (its extension decides how it is read)
 
 class Chunk(Identity, Base):
     __tablename__ = 'document_chunks'

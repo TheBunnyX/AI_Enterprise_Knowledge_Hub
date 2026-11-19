@@ -35,13 +35,20 @@ def admin(u: User = Depends(current_user)):
 def manager(u):
     if u.role not in ('SUPER_ADMIN', 'DEPARTMENT_ADMIN'): raise HTTPException(403, 'ต้องมีสิทธิ์ผู้ดูแลแผนกหรือ Super Admin')
 
+def session_seconds():
+    """How long a sign-in lasts, counted from the moment of signing in (not extended by use): SESSION_HOURS, default 24."""
+    try: hours = float(os.getenv('SESSION_HOURS', '24'))
+    except ValueError: hours = 24.
+    return int(min(max(hours, 0.25), 24 * 30) * 3600)  # a quarter of an hour to thirty days
+
 def issue_session(db, user, response):
     token = secrets.token_urlsafe(48)
-    db.add(LoginSession(user_id=user.id, token_hash=hashlib.sha256(token.encode()).hexdigest(), expires=time.time()+28800))
+    lifetime = session_seconds()
+    db.add(LoginSession(user_id=user.id, token_hash=hashlib.sha256(token.encode()).hexdigest(), expires=time.time()+lifetime))
     db.add(Audit(tenant_id=user.tenant_id, user_id=user.id, actor=user.name, action='เข้าสู่ระบบ', detail=user.email))
     db.execute(update(User).where(User.id == user.id).values(last_ip=current_ip.get()))
     db.commit()
-    response.set_cookie('hub_session', token, httponly=True, secure=PRODUCTION, samesite='lax', max_age=28800, path='/')
+    response.set_cookie('hub_session', token, httponly=True, secure=PRODUCTION, samesite='lax', max_age=lifetime, path='/')
 
 def public_user(u):
-    return {k:getattr(u,k) for k in ('id','name','email','role','tenant_id')}
+    return {k:getattr(u,k) for k in ('id','name','name_en','email','role','tenant_id')}

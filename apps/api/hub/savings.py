@@ -158,10 +158,10 @@ def apply_prompt_cache(messages, api_id):
 def enforce_limits(db, u, p):
     now = utc_now()
     if p['rate_per_minute']:
-        recent = db.scalar(select(func.count()).select_from(Usage).where(Usage.user_id == u.id, ~Usage.model.startswith('เสียง · พูด'), Usage.created_at >= (now - timedelta(minutes=1)).isoformat()))
+        recent = db.scalar(select(func.count()).select_from(Usage).where(Usage.user_id == u.id, ~Usage.model.startswith('เสียง · พูด'), ~Usage.model.startswith('แปลคำค้น'), Usage.created_at >= (now - timedelta(minutes=1)).isoformat()))
         if recent >= p['rate_per_minute']: raise HTTPException(429, f'ส่งคำขอถี่เกินไป (สูงสุด {p["rate_per_minute"]} ครั้งต่อนาที) กรุณารอสักครู่')
     if p['daily_requests']:
-        today = db.scalar(select(func.count()).select_from(Usage).where(Usage.user_id == u.id, ~Usage.model.startswith('เสียง · พูด'), Usage.created_at >= now.strftime('%Y-%m-%d')))
+        today = db.scalar(select(func.count()).select_from(Usage).where(Usage.user_id == u.id, ~Usage.model.startswith('เสียง · พูด'), ~Usage.model.startswith('แปลคำค้น'), Usage.created_at >= now.strftime('%Y-%m-%d')))
         if today >= p['daily_requests']: raise HTTPException(429, f'ใช้ครบ {p["daily_requests"]} คำขอต่อวันแล้ว กรุณาลองใหม่พรุ่งนี้')
 
 def check_budget_alerts(tenant_id, user_id):

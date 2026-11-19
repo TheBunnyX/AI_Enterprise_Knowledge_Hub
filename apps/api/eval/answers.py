@@ -14,7 +14,7 @@ check instead. It undercounts correct answers that paraphrase the phrase.
 UNLIKE eval.run THIS CALLS A PAID/RATE-LIMITED API: about 5 requests per question, and the questions and passages of
 eval/corpus are sent to that provider. It needs the extra packages in eval/requirements.txt (not part of the app image).
 
-    python -m eval.answers                 # 12 questions, judge = gemini-flash-lite-latest with GOOGLE_AI_API_KEY from .env
+    python -m eval.answers                 # 12 questions, judge = gemini-3.1-flash-lite with GOOGLE_AI_API_KEY from .env
     python -m eval.answers --limit 45      # every question
     python -m eval.answers --langfuse      # also send each question, answer, passages and the scores to Langfuse (LANGFUSE_* in .env)
     EVAL_JUDGE_URL=https://openrouter.ai/api/v1 EVAL_JUDGE_KEY=sk-or-... EVAL_JUDGE_MODEL=... python -m eval.answers
@@ -34,7 +34,7 @@ def judge_settings():
     url = os.getenv('EVAL_JUDGE_URL', 'https://generativelanguage.googleapis.com/v1beta/openai').rstrip('/')
     key = os.getenv('EVAL_JUDGE_KEY') or env.get('GOOGLE_AI_API_KEY', '')
     if not key: raise SystemExit('Set EVAL_JUDGE_KEY (or GOOGLE_AI_API_KEY in .env) for the judge model')
-    return url, key, os.getenv('EVAL_JUDGE_MODEL', 'gemini-flash-lite-latest')
+    return url, key, os.getenv('EVAL_JUDGE_MODEL', 'gemini-3.1-flash-lite')
 
 
 def generate(client, url, key, model, question, found):
@@ -83,7 +83,7 @@ def main():
     parser.add_argument('--dump', help='only retrieve and answer, write the rows to this file and stop before any judge runs (input for eval.deepeval_run)')
     args = parser.parse_args()
     url, key, model = judge_settings()
-    questions = base.load_questions(); step = max(1, len(questions) // max(1, args.limit)); sample = questions[::step][:args.limit]
+    questions = base.load_questions(); n = min(args.limit, len(questions)); sample = [questions[i * len(questions) // n] for i in range(n)]  # evenly over the whole set, the last questions included
     work = base.configure(args.embedding)
     try:
         tenant, index = base.build_index()

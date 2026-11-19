@@ -77,8 +77,8 @@ def kbs(u:User=Depends(current_user),db:Session=Depends(db_session)):
     counts={}
     for id,kb in db.execute(select(Document.id,Document.knowledge_base_id).where(Document.tenant_id==u.tenant_id)):
         if id in readable:counts[kb]=counts.get(kb,0)+1
-    writable=set(visible_kbs(db,u,True));names=dict(db.execute(select(Group.id,Group.name).where(Group.tenant_id==u.tenant_id,Group.kind=='department')).all())
-    return [{**serialize(b,'id name description department_id multimodal'),'department':names.get(b.department_id,''),'can_write':b.id in writable,'documents':counts.get(b.id,0)} for b in bases]
+    writable=set(visible_kbs(db,u,True));names=dict(db.execute(select(Group.id,Group.name).where(Group.tenant_id==u.tenant_id,Group.kind=='department')).all());names_en=dict(db.execute(select(Group.id,Group.name_en).where(Group.tenant_id==u.tenant_id,Group.kind=='department')).all())
+    return [{**serialize(b,'id name name_en description department_id multimodal'),'department':names.get(b.department_id,''),'department_en':names_en.get(b.department_id,''),'can_write':b.id in writable,'documents':counts.get(b.id,0)} for b in bases]
 
 def owner_department(db,u,wanted):
     """The department a new knowledge base belongs to: a Super Admin picks any real one (or none); a department admin's own."""
@@ -94,14 +94,14 @@ def owner_department(db,u,wanted):
 @router.post('/knowledge-bases',status_code=201)
 def create_kb(body:KBCreate,u:User=Depends(current_user),db:Session=Depends(db_session)):
     manager(u)
-    b=KnowledgeBase(tenant_id=u.tenant_id,name=body.name,description=body.description,multimodal=body.multimodal,department_id=owner_department(db,u,body.department_id))
-    db.add(b); db.commit(); audit(db,u,'สร้างคลังความรู้',b.name); return serialize(b,'id name description department_id multimodal')
+    b=KnowledgeBase(tenant_id=u.tenant_id,name=body.name,name_en=body.name_en.strip(),description=body.description,multimodal=body.multimodal,department_id=owner_department(db,u,body.department_id))
+    db.add(b); db.commit(); audit(db,u,'สร้างคลังความรู้',b.name); return serialize(b,'id name name_en description department_id multimodal')
 
 @router.get('/documents')
 def documents(u:User=Depends(current_user),db:Session=Depends(db_session)):
     readable=set(visible_documents(db,u));writable=set(visible_documents(db,u,True))  # resolved once, not once per row
     rows=db.scalars(select(Document).where(Document.tenant_id==u.tenant_id,~Document.id.in_(deleted_ids())).order_by(Document.created_at.desc()))
-    return [{**serialize(d,'id name knowledge_base_id size status error version created_at'),'can_write':d.id in writable} for d in rows if d.id in readable]
+    return [{**serialize(d,'id name name_en knowledge_base_id size status error version created_at'),'can_write':d.id in writable} for d in rows if d.id in readable]
 
 @router.post('/documents',status_code=201)
 async def upload(background:BackgroundTasks,file:UploadFile=File(...),knowledge_base_id:str=Form(...),u:User=Depends(current_user),db:Session=Depends(db_session)):
@@ -136,6 +136,20 @@ def download(id:str,u:User=Depends(current_user),db:Session=Depends(db_session))
 def reindex(id:str,background:BackgroundTasks,u:User=Depends(current_user),db:Session=Depends(db_session)):
     manager(u); d=tenant_doc(db,u,id); require_document(db,u,id,True); d.status='processing'; db.commit(); from .jobs import schedule_ingest; schedule_ingest(d.id,background,retry=True); audit(db,u,'จัดทำดัชนีใหม่',d.name); return {'ok':True}
 
+@router.put('/documents/{id}/names')
+def rename_document(id:str,body:DocumentNames,u:User=Depends(current_user),db:Session=Depends(db_session)):
+    """Edit the file name and/or the English name. The extension of the file name is fixed: it decides how the file is read and downloaded."""
+    manager(u); d=tenant_doc(db,u,id); require_document(db,u,id,True)
+    if body.name is not None:
+        name=' '.join(body.name.replace('\\','/').split('/')[-1].split())
+        if not name: raise HTTPException(422,'ชื่อไฟล์ต้องไม่ว่าง')
+        old_ext=d.name.rsplit('.',1)[-1].lower() if '.' in d.name else ''; new_ext=name.rsplit('.',1)[-1].lower() if '.' in name else ''
+        if new_ext!=old_ext: raise HTTPException(422,'ต้องคงนามสกุลไฟล์เดิมไว้ (.'+old_ext+')' if old_ext else 'ชื่อไฟล์ต้องไม่มีนามสกุล')
+        d.name=name
+    if body.name_en is not None: d.name_en=' '.join(body.name_en.split())
+    db.commit(); audit(db,u,'แก้ไขชื่อเอกสาร',d.name[:100])
+    return {'id':d.id,'name':d.name,'name_en':d.name_en}
+
 @router.delete('/documents/{id}')
 def delete_doc(id:str,u:User=Depends(current_user),db:Session=Depends(db_session)):
     manager(u); d=tenant_doc(db,u,id); require_document(db,u,id,True)
@@ -153,10 +167,15 @@ def knowledge_search(q:str=Query(min_length=1,max_length=2000),kb_id:str|None=No
     """The search page. The reranker is a CPU cross-encoder, so it only judges the best `limit` candidates (50 took about 12 s, 15 takes a few seconds),
     and a passage the reranker finds barely related (below SEARCH_MIN_SCORE) is left out of the list."""
     floor=float(os.getenv('SEARCH_MIN_SCORE','0.03'))
-    found=[r for r in search(db,u.tenant_id,q,kb_id,mode=mode,limit=limit,user=u,per_doc=per_doc) if r.get('rerank_score',1)>=floor]
+    strict=search(db,u.tenant_id,q,kb_id,mode=mode,limit=limit,user=u,per_doc=per_doc)
+    found=[r for r in strict if r.get('rerank_score',1)>=floor]
     if found:return found
-    # Nothing passed the strict thresholds (typo, or another language): retry loosely and let the reranker judge.
+    # Nothing is clearly relevant (a question in another language scores low against Thai passages): keep the weaker strict
+    # candidates, flagged as approximate. They already passed the lexical/semantic thresholds, so they are not noise.
     fallback=float(os.getenv('SEARCH_FALLBACK_MIN','0.005'))
+    weak=[r|{'approx':True} for r in strict if r.get('rerank_score',1)>=fallback]
+    if weak:return weak[:5]
+    # Still nothing (typo): retry loosely and let the reranker judge.
     return [r|{'approx':True} for r in search(db,u.tenant_id,q,kb_id,mode=mode,limit=8,user=u,relaxed=True,per_doc=2,pool=8) if r.get('rerank_score',1)>=fallback][:5]
 
 @router.get('/chunks/{id}/image')

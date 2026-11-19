@@ -6,6 +6,7 @@ class Login(BaseModel):
     password: str = Field(min_length=1,max_length=200)
 class KBCreate(BaseModel):
     name: str = Field(min_length=1,max_length=100)
+    name_en: str = Field(default='',max_length=100)  # optional English name
     description: str = Field(default='',max_length=500)
     department_id: str = Field(default='',max_length=36)  # '' = the creator's own department (a Super Admin may leave it unset)
     multimodal: bool = False  # describe and embed the pictures in this library's documents (sent to Google AI)
@@ -29,6 +30,7 @@ class OrgInput(BaseModel):
     quota: int = Field(default=10000,ge=0,le=100000000)
 class UserInput(BaseModel):
     name: str = Field(min_length=1,max_length=100)
+    name_en: str = Field('',max_length=100)
     email: str = Field(pattern=r'^[^\s@]+@[^\s@]+\.[^\s@]+$',max_length=254)
     tenant_id: str
     role: Literal['SUPER_ADMIN','DEPARTMENT_ADMIN','USER'] = 'USER'
@@ -47,3 +49,9 @@ class ModelInput(BaseModel):
     output_price: float = Field(default=0,ge=0)
     effort: Literal['','minimal','low','medium','high'] = ''
     media_limits: dict[Literal['resolutions','aspect_ratios','durations'],list[Annotated[str,StringConstraints(max_length=12)]]] = Field(default_factory=dict)
+
+
+class DocumentNames(BaseModel):
+    """Both names of a document: the file name (Thai or any language; its extension must not change) and an optional English name."""
+    name: str | None = Field(None, min_length=1, max_length=200)
+    name_en: str | None = Field(None, max_length=200)

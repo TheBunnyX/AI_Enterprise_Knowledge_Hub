@@ -49,13 +49,19 @@ def ensure_department_demo(db):
         if u and not db.scalar(select(GroupMember).where(GroupMember.group_id==department.id,GroupMember.user_id==u.id)): db.add(GroupMember(tenant_id=admin.tenant_id,group_id=department.id,user_id=u.id))
     db.commit()
 
+def ensure_sample_skills(db):
+    """The ready-made AI skills, unless SEED_SAMPLE_SKILLS=false (the test suite counts skills, so it opts out)."""
+    if os.getenv('SEED_SAMPLE_SKILLS','true').lower()!='true': return 0
+    from .sample_skills import ensure
+    return ensure(db)
+
 def seed():
     if os.getenv('SEED_SAMPLE_DATA','false').lower()!='true': return  # production data is created by hub.bootstrap, never seeded
     ids=[]
     with SessionLocal() as db:
         existing=db.scalar(select(Organization).order_by(Organization.created_at).limit(1))
         if existing:
-            ensure_department_demo(db); ids=ensure_real_documents(db,existing.id)
+            ensure_department_demo(db); ensure_sample_skills(db); ids=ensure_real_documents(db,existing.id)
             for i in ids: ingest(i)
             return
         org=Organization(name='องค์กรสาธิต AI Knowledge Hub',plan='Enterprise'); db.add(org); db.flush()
@@ -66,7 +72,7 @@ def seed():
         db.flush()
         department=Group(tenant_id=org.id,name='ฝ่ายบุคคล',kind='department');db.add(department);db.flush()
         for user in db.scalars(select(User).where(User.email.in_(['department@local.test','member@local.test']))):db.add(GroupMember(tenant_id=org.id,group_id=department.id,user_id=user.id))
-        db.commit(); ids=ensure_real_documents(db,org.id)
+        db.commit(); ids=ensure_real_documents(db,org.id); ensure_sample_skills(db)
         db.add(AIModel(name='Test LLM',provider='LiteLLM',api_id='test-llm',enabled=True)); db.commit()  # sample-data (dev/test) databases only
     for i in ids: ingest(i)
 
@@ -81,3 +87,4 @@ def install_starter_documents():
 
 if __name__=='__main__':
     print('added',len(install_starter_documents()),'documents')
+    with SessionLocal() as db:print('added',ensure_sample_skills(db),'sample skills')

@@ -38,8 +38,9 @@ def _queue():
     return bool(redis.Redis.from_url(url,socket_timeout=TIMEOUT,socket_connect_timeout=TIMEOUT).ping())
 
 def _antivirus():
+    from . import antivirus
     host=os.getenv('CLAMAV_HOST')
-    if not host:return None
+    if not host or not antivirus.enabled():return None
     with socket.create_connection((host,int(os.getenv('CLAMAV_PORT','3310'))),timeout=TIMEOUT) as s:
         s.sendall(b'zPING\0');return s.recv(100).startswith(b'PONG')
 

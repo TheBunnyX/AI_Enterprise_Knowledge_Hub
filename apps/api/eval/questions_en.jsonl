@@ -1,0 +1,16 @@
+{"q": "After 6 years of service, how many vacation days do I get per year?", "doc": "hr-leave.md", "answer": "ปีละ 15 วันทำการ"}
+{"q": "How many unused vacation days can be carried over to next year?", "doc": "hr-leave.md", "answer": "ปีถัดไปได้ไม่เกิน 5 วัน"}
+{"q": "After how many sick days is a medical certificate required?", "doc": "hr-leave.md", "answer": "ตั้งแต่ 3 วันขึ้นไปต้องแนบใบรับรองแพทย์"}
+{"q": "How many days can a new father take off?", "doc": "hr-leave.md", "answer": "บุตรแรกเกิดได้ 15 วันทำการ"}
+{"q": "How much fuel allowance do I get when I drive my own car to see a client out of town?", "doc": "expense-travel.md", "answer": "6 บาทต่อกิโลเมตร"}
+{"q": "What is the hotel limit per night outside Bangkok?", "doc": "expense-travel.md", "answer": "จังหวัดอื่นเบิกได้ไม่เกินคืนละ 1,500 บาท"}
+{"q": "Within how many days must an expense claim be submitted?", "doc": "expense-travel.md", "answer": "ภายใน 30 วันนับจากวันที่เกิดค่าใช้จ่าย"}
+{"q": "What is the minimum password length?", "doc": "it-security.md", "answer": "อย่างน้อย 14 ตัวอักษร"}
+{"q": "How quickly must I report a lost company laptop?", "doc": "it-security.md", "answer": "แจ้งฝ่ายไอทีภายใน 2 ชั่วโมง"}
+{"q": "How long are monthly backups kept?", "doc": "it-security.md", "answer": "ชุดสำรองรายเดือนเก็บไว้ 7 ปี"}
+{"q": "Within how many hours must a customer data leak be reported to the authority?", "doc": "it-security.md", "answer": "ภายใน 72 ชั่วโมงนับจากทราบเหตุ"}
+{"q": "How many quotations are needed for a purchase worth 100,000 baht?", "doc": "procurement.md", "answer": "เปรียบเทียบใบเสนอราคาอย่างน้อย 3 ราย"}
+{"q": "What contract value requires a public tender?", "doc": "procurement.md", "answer": "มูลค่าเกิน 500,000 บาทต้องใช้วิธีประกวดราคา"}
+{"q": "How many days per week can I work from home?", "doc": "remote-work.md", "answer": "สัปดาห์ละไม่เกิน 3 วัน"}
+{"q": "How much does the company pay toward home internet each month?", "doc": "remote-work.md", "answer": "ค่าอินเทอร์เน็ตบ้านเดือนละ 500 บาท"}
+{"q": "How often are fire drills held and in which months?", "doc": "workplace-safety.md", "answer": "ปีละ 2 ครั้ง ในเดือนมีนาคมและเดือนตุลาคม"}

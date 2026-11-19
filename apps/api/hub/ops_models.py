@@ -9,6 +9,7 @@ class Group(Identity,Base):
     tenant_id:Mapped[str]=mapped_column(index=True)
     name:Mapped[str]
     kind:Mapped[str]=mapped_column(default='group')
+    name_en:Mapped[str]=mapped_column(default='',server_default='')  # optional English name of a department
 
 class GroupMember(Identity,Base):
     __tablename__='group_members'

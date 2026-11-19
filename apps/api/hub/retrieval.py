@@ -175,10 +175,21 @@ def picture_hits(db,tenant_id,query,docs):
 
 IN_LIMIT=500  # above this many documents the scope is checked in Python instead of a long SQL IN list
 
+CROSS_POOL=int(os.getenv('CROSS_LANGUAGE_POOL','20'))  # candidates the reranker sees for a question without Thai letters
+THAI_LETTERS=re.compile(r'[\u0e00-\u0e7f]')
+
+def cross_language(query):
+    """True for a question without Thai letters while a reranker is configured. Dense similarity between an English question and Thai
+    passages is low (the 0.80 cut-off drops the right chunk), but the multilingual reranker scores them well, so such questions
+    keep more dense candidates and leave the verdict to the reranker, whose floor still rejects meaningless queries."""
+    return os.getenv('CROSS_LANGUAGE_SEARCH','true').lower()=='true' and bool(os.getenv('RERANK_MODEL')) and not THAI_LETTERS.search(query or '')
+
+DEPARTMENT_BOOST=1.2  # score multiplier for passages from the user's own department's knowledge bases
+
 def searchable_documents(db,tenant_id,kb_id=None,document_ids=None,user=None):
     """Ready, undeleted documents this search may touch, narrowed to what the user may read: {id: row(name, version, knowledge_base_id)}."""
     from .policies import deleted_ids, visible_documents
-    stmt=select(Document.id,Document.name,Document.version,Document.knowledge_base_id).where(Document.tenant_id==tenant_id,Document.status=='ready',~Document.id.in_(deleted_ids()))
+    stmt=select(Document.id,Document.name,Document.name_en,Document.version,Document.knowledge_base_id).where(Document.tenant_id==tenant_id,Document.status=='ready',~Document.id.in_(deleted_ids()))
     if kb_id: stmt=stmt.where(Document.knowledge_base_id==kb_id)
     if document_ids: stmt=stmt.where(Document.id.in_(document_ids))
     docs={r.id:r for r in db.execute(stmt)}
@@ -194,6 +205,7 @@ def search(db, tenant_id, query, kb_id=None, document_ids=None, mode='hybrid', l
     spec=embeddings.specification()
     docs=searchable_documents(db,tenant_id,kb_id,document_ids,user)
     use_sparse=mode!='semantic'; use_dense=mode!='keyword'
+    cross=cross_language(query) and not relaxed  # a question in another language than the passages: let the reranker judge more candidates
     vector_store=use_dense and bool(os.getenv('QDRANT_URL'))
     qv=embeddings.batch([query],tenant_id,'query')[0] if use_dense else None
     scope=[Chunk.tenant_id==tenant_id,Chunk.embedding_version==spec['version']]
@@ -245,14 +257,22 @@ def search(db, tenant_id, query, kb_id=None, document_ids=None, mode='hybrid', l
     ranks={}
     for source in ([sparse] if mode=='keyword' else [dense,pictures] if mode=='semantic' else [sparse,dense,pictures]):
         for rank,(score,id) in enumerate(source):
-            if score < (multimodal.settings()['min_score'] if source is pictures else 0 if relaxed else 0.10 if source is sparse else spec.get('min_score',0.16)) or (relaxed and source is sparse and score<=0): continue
+            if score < (multimodal.settings()['min_score'] if source is pictures else 0 if relaxed else 0.10 if source is sparse else 0 if cross else spec.get('min_score',0.16)) or (relaxed and source is sparse and score<=0): continue
             old=ranks.get(id,[0,id]); old[0]+=1/(60+rank+1); ranks[id]=old
+    if user is not None and not kb_id and ranks:  # the user's own department's knowledge wins a close call (a gentle nudge, not a filter)
+        from .policies import department_ids
+        mine=department_ids(db,user)
+        if mine:
+            own=set(db.scalars(select(KnowledgeBase.id).where(KnowledgeBase.tenant_id==tenant_id,KnowledgeBase.department_id.in_(mine))))
+            for id,entry in ranks.items():
+                if docs[chunks[id][0]].knowledge_base_id in own: entry[0]*=DEPARTMENT_BOOST
     results=[]; taken={}
-    cap=pool or (max(limit,30) if relaxed else limit)  # how many candidates go to the reranker (a CPU model: the cost grows with this number)
+    cap=pool or (max(limit,30) if relaxed else max(limit,CROSS_POOL) if cross else limit)  # how many candidates go to the reranker (a CPU model: the cost grows with this number)
     for score,id in sorted(ranks.values(),key=lambda x:x[0],reverse=True):
         if len(results)>=cap:break
         document_id,page,text=chunks[id]; d=docs[document_id]
         if per_doc and taken.get(document_id,0)>=per_doc:continue  # keep a few passages per document so the list covers more documents
         taken[document_id]=taken.get(document_id,0)+1
-        results.append({'chunk_id':id,'document_id':document_id,'name':d.name,'version':d.version,'page':page,'snippet':text,'score':round(score,5),'knowledge_base_id':d.knowledge_base_id,'kind':kinds.get(id,'text')})
-    return embeddings.rerank(query,results,floor=0 if relaxed else None)
+        results.append({'chunk_id':id,'document_id':document_id,'name':d.name,'name_en':d.name_en,'version':d.version,'page':page,'snippet':text,'score':round(score,5),'knowledge_base_id':d.knowledge_base_id,'kind':kinds.get(id,'text')})
+    ranked=embeddings.rerank(query,results,floor=0 if relaxed else None)
+    return ranked[:limit] if cross and not pool else ranked

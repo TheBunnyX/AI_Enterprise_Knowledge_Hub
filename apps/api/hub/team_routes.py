@@ -57,14 +57,15 @@ def list_users(days: int = Query(30, ge=1, le=365), tenant_id: str | None = None
     ids = [a.id for a in users]
     cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
     usage = {r[0]: r[1:] for r in db.execute(select(Usage.user_id, func.count(), func.coalesce(func.sum(Usage.input_tokens), 0), func.coalesce(func.sum(Usage.output_tokens), 0), func.coalesce(func.sum(Usage.cost), 0)).where(Usage.user_id.in_(ids), Usage.created_at >= cutoff).group_by(Usage.user_id))} if ids else {}
-    depts = {}
+    depts = {}; depts_en = {}
     if ids:
-        for uid, name in db.execute(select(GroupMember.user_id, Group.name).join(Group, Group.id == GroupMember.group_id).where(GroupMember.user_id.in_(ids), Group.kind == 'department')):
-            depts.setdefault(uid, []).append(name)
-    return [serialize(a, usage.get(a.id), depts, month_spend(db, a.id)) for a in users]
+        for uid, name, name_en in db.execute(select(GroupMember.user_id, Group.name, Group.name_en).join(Group, Group.id == GroupMember.group_id).where(GroupMember.user_id.in_(ids), Group.kind == 'department')):
+            depts.setdefault(uid, []).append(name); depts_en.setdefault(uid, []).append(name_en or name)
+    return [{**serialize(a, usage.get(a.id), depts, month_spend(db, a.id)), 'departments_en': depts_en.get(a.id, [])} for a in users]
 
 class TeamUserInput(BaseModel):
     name: str = Field(min_length=1, max_length=100)
+    name_en: str = Field('', max_length=100)
     email: str = Field(pattern=r'^[^\s@]+@[^\s@]+\.[^\s@]+$', max_length=254)
     password: str = Field(min_length=12, max_length=200)
     tenant_id: str | None = None
@@ -86,7 +87,7 @@ def create_user(body: TeamUserInput, u: User = Depends(current_user), db: Sessio
         dept = body.department_id or (own[0] if len(own) == 1 else None)
         if not dept or dept not in own: raise HTTPException(422, 'เลือกแผนกที่คุณดูแล')
     if dept and not db.scalar(select(Group).where(Group.id == dept, Group.tenant_id == tenant, Group.kind == 'department')): raise HTTPException(422, 'ไม่พบแผนก')
-    a = User(tenant_id=tenant, email=email, name=body.name, role='USER', password_hash=passwords.hash(body.password))
+    a = User(tenant_id=tenant, email=email, name=body.name, name_en=body.name_en.strip(), role='USER', password_hash=passwords.hash(body.password))
     db.add(a); db.flush()
     if dept: db.add(GroupMember(tenant_id=tenant, group_id=dept, user_id=a.id))
     db.commit(); log(db, u, 'เพิ่มผู้ใช้', a.email)
@@ -94,10 +95,11 @@ def create_user(body: TeamUserInput, u: User = Depends(current_user), db: Sessio
 
 class TeamNameInput(BaseModel):
     name: str = Field(min_length=1, max_length=100)
+    name_en: str = Field('', max_length=100)
 
 @router.put('/users/{id}')
 def rename_user(id: str, body: TeamNameInput, u: User = Depends(current_user), db: Session = Depends(db_session)):
-    a = target(db, u, id); a.name = body.name; db.commit(); log(db, u, 'แก้ไขชื่อผู้ใช้', a.email)
+    a = target(db, u, id); a.name = body.name; a.name_en = body.name_en.strip(); db.commit(); log(db, u, 'แก้ไขชื่อผู้ใช้', a.email)
     return {'ok': True}
 
 @router.post('/users/{id}/toggle')
@@ -138,7 +140,7 @@ def department_for(db, u, id):
 
 def describe(db, g):
     members = list(db.scalars(select(User).join(GroupMember, GroupMember.user_id == User.id).where(GroupMember.group_id == g.id, GroupMember.tenant_id == g.tenant_id).order_by(User.name)))
-    return {'id': g.id, 'name': g.name, 'members': len(members), 'active_members': sum(1 for m in members if m.active),
+    return {'id': g.id, 'name': g.name, 'name_en': g.name_en, 'members': len(members), 'active_members': sum(1 for m in members if m.active),
             'admins': [m.name for m in members if m.role == 'DEPARTMENT_ADMIN']}
 
 @router.get('/departments')
@@ -150,11 +152,12 @@ def list_departments(u: User = Depends(current_user), db: Session = Depends(db_s
 
 class DepartmentInput(BaseModel):
     name: str = Field(min_length=1, max_length=100)
+    name_en: str = Field('', max_length=100)  # optional English name
 
 @router.post('/departments', status_code=201)
 def create_department(body: DepartmentInput, u: User = Depends(admin), db: Session = Depends(db_session)):
     if db.scalar(select(Group).where(Group.tenant_id == u.tenant_id, Group.name == body.name)): raise HTTPException(409, 'ชื่อฝ่ายนี้มีอยู่แล้ว')
-    g = Group(tenant_id=u.tenant_id, name=body.name, kind='department'); db.add(g); db.commit()
+    g = Group(tenant_id=u.tenant_id, name=body.name, name_en=body.name_en.strip(), kind='department'); db.add(g); db.commit()
     log(db, u, 'สร้างฝ่าย', g.name)
     return describe(db, g)
 
@@ -162,7 +165,7 @@ def create_department(body: DepartmentInput, u: User = Depends(admin), db: Sessi
 def rename_department(id: str, body: DepartmentInput, u: User = Depends(admin), db: Session = Depends(db_session)):
     g = department_for(db, u, id)
     if db.scalar(select(Group).where(Group.tenant_id == u.tenant_id, Group.name == body.name, Group.id != g.id)): raise HTTPException(409, 'ชื่อฝ่ายนี้มีอยู่แล้ว')
-    g.name = body.name; db.commit(); log(db, u, 'เปลี่ยนชื่อฝ่าย', g.name)
+    g.name = body.name; g.name_en = body.name_en.strip(); db.commit(); log(db, u, 'เปลี่ยนชื่อฝ่าย', g.name)
     return {'ok': True}
 
 @router.delete('/departments/{id}')

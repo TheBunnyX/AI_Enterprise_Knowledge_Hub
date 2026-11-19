@@ -10,6 +10,7 @@ os.environ['DATABASE_URL'],_drop_database=_create_database('hub_test')
 os.environ.pop('MIGRATION_DATABASE_URL',None)
 import atexit; atexit.register(_drop_database)
 os.environ['SEED_SAMPLE_DATA']='true'
+os.environ['SEED_SAMPLE_SKILLS']='false'  # the skill tests count skills; tests of the samples switch it on
 for key in ('S3_ENDPOINT','QDRANT_URL','CELERY_BROKER_URL','APP_ENV','LITELLM_URL','CLAMAV_HOST','CLAMAV_REQUIRED','BACKUP_DIR'): os.environ.pop(key,None)
 import pytest
 from fastapi.testclient import TestClient
@@ -23,6 +24,7 @@ def fake_llm(monkeypatch):
     """Default test gateway: answers every chat call by quoting the evidence it was given, like a grounded model would."""
     import httpx
     monkeypatch.setenv('LITELLM_URL','http://gateway.test/v1')
+    monkeypatch.setenv('QUERY_TRANSLATION','false')  # tests of the translation switch it on
     def respond(request):
         body=__import__('json').loads(request.content);user=str(body['messages'][-1]['content'])
         evidence=user.split('หลักฐาน:',1)[1].strip() if 'หลักฐาน:' in user else ''
@@ -34,6 +36,7 @@ def fake_llm(monkeypatch):
 @pytest.fixture
 def client():
     Base.metadata.drop_all(engine); windows.clear()
+    from hub import antivirus; antivirus.forget()
     with TestClient(app) as c: yield c
 
 def login_as(client,role):

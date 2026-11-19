@@ -23,6 +23,26 @@ def operations_health(u:User=Depends(admin),db:Session=Depends(db_session)):
     s=db.scalar(select(Setting).where(Setting.key=='operations-health'))
     return s.value if s else {'checks':{},'checked_at':''}
 
+class AntivirusInput(BaseModel):
+    enabled:bool
+
+@router.get('/admin/antivirus')
+def antivirus_state(u:User=Depends(admin)):
+    """Whether uploads are virus-scanned, and whether this deployment has a scanner at all."""
+    from . import antivirus
+    return {'enabled':antivirus.enabled(),'configured':bool(os.getenv('CLAMAV_HOST')),'required':os.getenv('CLAMAV_REQUIRED','false').lower()=='true'}
+
+@router.put('/admin/antivirus')
+def antivirus_set(body:AntivirusInput,u:User=Depends(admin),db:Session=Depends(db_session)):
+    """Switch scanning on or off. Turning it off is a security decision, so it is written to the audit log (and shown on the Security page)."""
+    from . import antivirus,alerts
+    before=antivirus.enabled()
+    antivirus.set_enabled(db,body.enabled)
+    if body.enabled and not before:alerts.resolve('antivirus-off')
+    if not body.enabled and before:alerts.publish('antivirus-off','ปิดการตรวจไวรัสของไฟล์ที่อัปโหลด','ไฟล์ที่อัปโหลดจะไม่ถูกสแกนจนกว่าจะเปิดอีกครั้ง',severity='warning')
+    if body.enabled!=before:log(db,u,'เปิดการตรวจไวรัส' if body.enabled else 'ปิดการตรวจไวรัส','ClamAV')
+    return {'enabled':antivirus.enabled(),'configured':bool(os.getenv('CLAMAV_HOST'))}
+
 @router.post('/admin/operations/check')
 def operations_check(u:User=Depends(admin)):
     from .monitoring import probe

@@ -68,7 +68,7 @@ def test_grounded_chat_citations_and_usage(member):
 def test_no_evidence_does_not_invent_sources(member):
     r=member.post('/api/chat',json={'question':'zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz'})
     meta=json.loads(r.text.splitlines()[0]);assert meta['citations']==[]
-    assert 'ยังไม่พบหลักฐาน' in ''.join(json.loads(l).get('text','') for l in r.text.splitlines())
+    assert 'No relevant evidence was found' in ''.join(json.loads(l).get('text','') for l in r.text.splitlines())  # an English question gets an English reply
 
 def test_org_management_and_quota(admin):
     org=admin.post('/api/admin/organizations',json={'name':'Test tenant','quota':0}).json()
@@ -179,3 +179,10 @@ def test_gateway_usage_and_cost_estimate(admin,monkeypatch):
     a=admin.get('/api/analytics').json()
     assert a['input_tokens']==250 and a['output_tokens']==500
     assert math.isclose(a['cost'],.0035) and a['estimated'] is True
+
+
+def test_the_nothing_found_reply_follows_the_language_of_the_question():
+    from hub.chat_service import no_evidence_text, NO_EVIDENCE_TH, NO_EVIDENCE_EN
+    assert no_evidence_text('afdasdsfasdfadf') == NO_EVIDENCE_EN
+    assert no_evidence_text('ลาป่วยกี่วัน') == NO_EVIDENCE_TH
+    assert no_evidence_text('') == NO_EVIDENCE_EN

@@ -54,8 +54,8 @@ def _parts(out):
     return ((out.get('candidates') or [{}])[0].get('content') or {}).get('parts') or []
 
 
-def transcribe(base, key, model, data, mime, language='th'):
-    prompt = 'ถอดเสียงพูดเป็นข้อความ' + (' ภาษาไทย' if language == 'th' else f' (รหัสภาษา {language})') + ' ตอบเฉพาะข้อความที่ได้ยิน ไม่ต้องอธิบายเพิ่ม'
+def transcribe(base, key, model, data, mime, language='auto'):
+    prompt = 'ถอดเสียงพูดเป็นข้อความ' + (' ภาษาไทยหรืออังกฤษ (ตามที่ได้ยิน)' if language == 'auto' else ' ภาษาไทย' if language == 'th' else f' (รหัสภาษา {language})') + ' ตอบเฉพาะข้อความที่ได้ยิน ไม่ต้องอธิบายเพิ่ม'
     out = _call(base, key, model, {'contents': [{'parts': [{'text': prompt}, {'inlineData': {'mimeType': mime, 'data': base64.b64encode(data).decode()}}]}]})
     return ''.join((p.get('audioTranscription') or {}).get('text') or p.get('text') or '' for p in _parts(out)).strip()
 

@@ -173,18 +173,68 @@ FONT_DIR=Path(__file__).parent/'fonts'
 _THAI_BASE=lambda c:'\u0e01'<=c<='\u0e2e'
 _LEADING=lambda c:c in '\u0e40\u0e41\u0e42\u0e43\u0e44'
 
+_THAI_RUN=re.compile('([\u0e00-\u0e7f]+)')
+_NO_LINE_START=set('ๆฯะาำิีึืุู็่้๊๋์ํั')  # characters that belong to the word before them
+
+def _thai_words(run):
+    """Word boundaries of a Thai run from a dictionary (PyThaiNLP newmm), so a line never ends in the middle of a word
+    (รับรอ|งแพทย์). If PyThaiNLP is missing, fall back to cutting before any consonant or leading vowel."""
+    try:
+        from pythainlp.tokenize import word_tokenize
+        words=word_tokenize(run,engine='newmm',keep_whitespace=False)
+    except Exception:
+        words=None
+    if not words:
+        words=[];cur=''
+        for i,c in enumerate(run):
+            prev=run[i-1] if i else ''
+            if cur and (_THAI_BASE(c) or _LEADING(c)) and not _LEADING(prev):words.append(cur);cur=''
+            cur+=c
+        if cur:words.append(cur)
+    out=[]
+    for w in words:  # a mark, ๆ or a trailing vowel cannot start a line: it stays with the word before
+        if out and w[0] in _NO_LINE_START:out[-1]+=w
+        else:out.append(w)
+    return out
+
+_SHORT_WORDS=[]
+def _split_long(unit):
+    """A compound wider than the whole line (กองทุนประกันสังคม): split it with short dictionary words only, so the cut still falls
+    between words (กองทุน|ประกัน|สังคม). Returns [unit] when that is not possible."""
+    core=unit.rstrip();tail=unit[len(core):]
+    if not _THAI_RUN.fullmatch(core):return [unit]
+    try:
+        from pythainlp.corpus import thai_words
+        from pythainlp.tokenize import word_tokenize
+        from pythainlp.util import Trie
+        if not _SHORT_WORDS:_SHORT_WORDS.append(Trie([w for w in thai_words() if len(w)<=7]))
+        parts=word_tokenize(core,custom_dict=_SHORT_WORDS[0],engine='newmm',keep_whitespace=False)
+    except Exception:return [unit]
+    out=[]
+    for w in parts:
+        if out and w[0] in _NO_LINE_START:out[-1]+=w
+        else:out.append(w)
+    out[-1]+=tail
+    return out or [unit]
+
+def _units(text):
+    """The pieces a line may be broken between: whole Thai words, and Latin words/numbers with their trailing space."""
+    units=[];after_thai=False
+    for seg in _THAI_RUN.split(text):
+        if not seg:continue
+        if _THAI_RUN.fullmatch(seg):
+            units.extend(_thai_words(seg));after_thai=True
+            continue
+        for piece in re.findall(r'[^ ]+ *| +',seg):
+            if units and (not piece.strip() or (after_thai and piece[0]!=' ')):units[-1]+=piece  # spaces trail the word; Latin glued to Thai has no break between
+            else:units.append(piece)
+            after_thai=False
+    return units
+
 def wrap_lines(text,width,measure):
-    """Greedy line breaking for mixed Thai/Latin text. Thai has no spaces, so a break is allowed before a consonant or
-    leading vowel (never before a vowel/tone mark, never right after a leading vowel); Latin breaks only at spaces."""
-    units=[];cur=''
-    for i,c in enumerate(text):
-        prev=text[i-1] if i else ''
-        thai_break=cur and (_THAI_BASE(c) or _LEADING(c)) and not _LEADING(prev) and ('\u0e00'<=prev<='\u0e7f')
-        space_break=cur and prev==' ' and c!=' '
-        latin_to_thai=cur and (_THAI_BASE(c) or _LEADING(c)) and prev not in ('',) and not ('\u0e00'<=prev<='\u0e7f') and prev!=' '
-        if thai_break or space_break or latin_to_thai:units.append(cur);cur=''
-        cur+=c
-    if cur:units.append(cur)
+    """Greedy line breaking for mixed Thai/Latin text. Thai has no spaces, so breaks fall between dictionary words (never inside
+    a word, never before a vowel or tone mark); Latin text breaks only at spaces."""
+    units=[sub for u in _units(text) for sub in (_split_long(u) if measure(u)>width else [u])]
     lines=[];line=''
     for u in units:
         if line and measure(line+u)>width:lines.append(line.rstrip());line=u.lstrip() if u.strip() else ''
@@ -192,9 +242,10 @@ def wrap_lines(text,width,measure):
         while measure(line)>width and len(line)>1:  # a single unit wider than the line (long URL/number)
             cut=len(line)
             while cut>1 and measure(line[:cut])>width:cut-=1
+            while cut>1 and (line[cut:cut+1] in _NO_LINE_START and line[cut:cut+1]!='' or line[cut-1] in '\u0e40\u0e41\u0e42\u0e43\u0e44'):cut-=1  # not before a mark, not right after a leading vowel
             lines.append(line[:cut]);line=line[cut:]
     if line.strip():lines.append(line.rstrip())
-    return lines or ['']
+    return [l for l in lines if l] or ['']
 
 def build_pdf(args):
     from reportlab.lib.pagesizes import A4
@@ -206,7 +257,7 @@ def build_pdf(args):
     from reportlab.platypus import SimpleDocTemplate,Paragraph,Spacer,Table,TableStyle
     from xml.sax.saxutils import escape
     title,secs=_sections(args)
-    from .thai_pdf import register_fonts,sink
+    from .thai_pdf import register_fonts,shape
     register_fonts()
     body=ParagraphStyle('b',fontName='Sarabun',fontSize=12,leading=19,spaceAfter=6)
     h1=ParagraphStyle('h',parent=body,fontName='Sarabun-Bold',fontSize=16,leading=24,spaceBefore=10,textColor=colors.HexColor('#1d4ed8'))
@@ -215,7 +266,7 @@ def build_pdf(args):
     page_w=A4[0]-4*cm
     def para(text,style,width,indent=0):
         lines=wrap_lines(text,width-indent,lambda t:pdfmetrics.stringWidth(t,style.fontName,style.fontSize))
-        return Paragraph('<br/>'.join(escape(sink(l)) for l in lines),style)
+        return Paragraph('<br/>'.join(escape(shape(l)) for l in lines),style)
     story=[]
     if title:story.append(para(title,ttl,page_w))
     for sec in secs:

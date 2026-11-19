@@ -194,6 +194,7 @@ def revoke(id:str,u:User=Depends(current_user),db:Session=Depends(db_session)):
 
 class UserRoleInput(BaseModel):
     name:str=Field(min_length=1,max_length=100)
+    name_en:str=Field('',max_length=100)
     role:Literal['SUPER_ADMIN','DEPARTMENT_ADMIN','USER']
 
 @router.put('/admin/users/{id}')
@@ -203,7 +204,7 @@ def edit_user(id:str,body:UserRoleInput,u:User=Depends(admin),db:Session=Depends
     if a.id==u.id and body.role!='SUPER_ADMIN':raise HTTPException(400,'ไม่สามารถลดสิทธิ์บัญชีตนเอง')
     from .ops_models import Group,GroupMember
     if body.role!='SUPER_ADMIN' and not db.scalar(select(func.count()).select_from(GroupMember).join(Group,Group.id==GroupMember.group_id).where(GroupMember.user_id==a.id,Group.kind=='department')):raise HTTPException(422,'ผู้ใช้ที่ไม่ใช่ Super Admin ต้องอยู่ในฝ่ายอย่างน้อยหนึ่งฝ่ายก่อน')
-    a.name=body.name;a.role=body.role;db.execute(delete(LoginSession).where(LoginSession.user_id==id));db.commit();log(db,u,'เปลี่ยนบทบาทผู้ใช้',a.email);return {'ok':True}
+    a.name=body.name;a.name_en=body.name_en.strip();a.role=body.role;db.execute(delete(LoginSession).where(LoginSession.user_id==id));db.commit();log(db,u,'เปลี่ยนบทบาทผู้ใช้',a.email);return {'ok':True}
 
 class PolicyInput(BaseModel):
     allowed_models:list[str]=Field(default_factory=list,max_length=500)
@@ -392,6 +393,7 @@ def change_password(body:PasswordInput,request:Request,u:User=Depends(current_us
 
 class KBEdit(BaseModel):
     name:str=Field(min_length=1,max_length=100)
+    name_en:str|None=Field(default=None,max_length=100)  # None = leave as it is
     description:str=Field(default='',max_length=500)
     department_id:str|None=Field(default=None,max_length=36)  # only a Super Admin may move a knowledge base to another department
     multimodal:bool|None=None  # None = leave as it is
@@ -404,6 +406,7 @@ def edit_kb(id:str,body:KBEdit,u:User=Depends(current_user),db:Session=Depends(d
         if body.department_id and not db.scalar(select(Group.id).where(Group.id==body.department_id,Group.tenant_id==u.tenant_id,Group.kind=='department')):raise HTTPException(422,'ไม่พบแผนกนี้ในองค์กร')
         kb.department_id=body.department_id
     if body.multimodal is not None:kb.multimodal=body.multimodal
+    if body.name_en is not None:kb.name_en=body.name_en.strip()
     kb.name=body.name;kb.description=body.description;db.commit();log(db,u,'แก้ไขคลังความรู้',kb.name);return {'ok':True}
 
 @router.post('/knowledge-bases/{id}/multimodal/apply')

@@ -35,7 +35,7 @@ def judge_settings():
     url = os.getenv('EVAL_JUDGE_URL', 'https://generativelanguage.googleapis.com/v1beta/openai').rstrip('/')
     key = os.getenv('EVAL_JUDGE_KEY') or env.get('GOOGLE_AI_API_KEY', '')
     if not key: raise SystemExit('Set EVAL_JUDGE_KEY (or GOOGLE_AI_API_KEY in .env) for the judge model')
-    return url, key, os.getenv('EVAL_JUDGE_MODEL', 'gemini-flash-lite-latest')
+    return url, key, os.getenv('EVAL_JUDGE_MODEL', 'gemini-3.1-flash-lite')
 
 
 def squash(text): return re.sub(r'\s+', '', text)
@@ -97,6 +97,7 @@ def main():
     parser.add_argument('--min-faithfulness', type=float, help='exit with code 1 when the mean faithfulness is below this')
     parser.add_argument('--min-citation', type=float, help='exit with code 1 when the mean citation_accuracy is below this')
     parser.add_argument('--delay', type=float, default=0, help='seconds to wait between questions (free-tier rate limits)')
+    parser.add_argument('--workers', type=int, default=6, help='questions judged at the same time (lower it when the provider rate-limits)')
     parser.add_argument('--json', help='write the per-question scores to this file')
     args = parser.parse_args()
     data = json.loads(Path(args.rows).read_text(encoding='utf-8'))
@@ -105,18 +106,27 @@ def main():
     from deepeval.metrics import FaithfulnessMetric, GEval
     from deepeval.test_case import LLMTestCase, SingleTurnParams
     judge = Judge(url, key, model)
-    faithfulness = FaithfulnessMetric(threshold=0.7, model=judge, include_reason=False, async_mode=False)
-    citation = GEval(name='citation_accuracy', criteria=CITATION_CRITERIA, evaluation_params=[SingleTurnParams.INPUT, SingleTurnParams.ACTUAL_OUTPUT, SingleTurnParams.RETRIEVAL_CONTEXT], model=judge, threshold=0.6, async_mode=False)
-    results = []
-    for number, row in enumerate(rows, 1):
+
+    def score_row(row):
+        """One question. Metrics hold their last score, so every call builds its own (this is what lets rows run in parallel)."""
+        faithfulness = FaithfulnessMetric(threshold=0.7, model=judge, include_reason=False, async_mode=False)
+        citation = GEval(name='citation_accuracy', criteria=CITATION_CRITERIA, evaluation_params=[SingleTurnParams.INPUT, SingleTurnParams.ACTUAL_OUTPUT, SingleTurnParams.RETRIEVAL_CONTEXT], model=judge, threshold=0.6, async_mode=False)
         out = {'question': row['user_input'], 'answer': row['response'], 'answer_has_fact': float(squash(row['reference']) in squash(row['response'])), 'faithfulness': None, 'citation_accuracy': None, 'errors': []}
         plain = LLMTestCase(input=row['user_input'], actual_output=row['response'], retrieval_context=row['retrieved_contexts'])
         numbered = LLMTestCase(input=row['user_input'], actual_output=row['response'], retrieval_context=[f'[{i}] {c}' for i, c in enumerate(row['retrieved_contexts'], 1)])
         for name, metric, case in [('faithfulness', faithfulness, plain)] + ([] if args.no_citation else [('citation_accuracy', citation, numbered)]):
             try: metric.measure(case, _show_indicator=False); out[name] = float(metric.score)
             except Exception as e: out['errors'].append(f'{name}: {type(e).__name__}: {str(e)[:160]}')  # one bad judge reply must not end the run
-        results.append(out); print(f'judged {number}/{len(rows)}', end='\r')
         if args.delay: time.sleep(args.delay)
+        return out
+
+    from concurrent.futures import ThreadPoolExecutor
+    done = 0
+    with ThreadPoolExecutor(max_workers=max(1, args.workers)) as pool:
+        futures = [pool.submit(score_row, row) for row in rows]
+        results = []
+        for future in futures:  # in question order; they finish in any order
+            results.append(future.result()); done += 1; print(f'judged {done}/{len(rows)}', end='\r', flush=True)
     print(f"judge: {model} | answers written by {data.get('answer_model')} | {len(rows)} questions" + ' ' * 20)
     means = {}
     for name in ('faithfulness', 'citation_accuracy', 'answer_has_fact'):

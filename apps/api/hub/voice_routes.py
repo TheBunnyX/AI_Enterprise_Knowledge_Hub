@@ -38,14 +38,14 @@ def record(db, u, label, model, response):
     db.add(Usage(tenant_id=u.tenant_id, user_id=u.id, model=f'{label} · {model.name}', cost=cost or 0, estimated=cost is None)); db.commit()
 
 @router.post('/transcribe')
-async def transcribe(file: UploadFile = File(...), model_id: str = Form(''), language: str = Form('th'), u: User = Depends(current_user), db: Session = Depends(db_session)):
+async def transcribe(file: UploadFile = File(...), model_id: str = Form(''), language: str = Form('auto'), u: User = Depends(current_user), db: Session = Depends(db_session)):
     savings.enforce_limits(db, u, savings.policy(db, u.tenant_id))
     model = choose_model(db, u, 'STT', model_id or None)
     guard(db, u, model.provider)
     data = await file.read(MAX_AUDIO + 1)
     if not data or len(data) > MAX_AUDIO: raise HTTPException(413, 'เสียงต้องไม่ว่างและไม่เกิน 10 MB')
     from .live import allowed_langs
-    if language not in allowed_langs(): raise HTTPException(422, 'ภาษานี้ไม่ได้เปิดใช้งานสำหรับเสียง (เปิดใช้: ' + ', '.join(allowed_langs()) + ')')
+    if language != 'auto' and language not in allowed_langs(): raise HTTPException(422, 'ภาษานี้ไม่ได้เปิดใช้งานสำหรับเสียง (เปิดใช้: ' + ', '.join(allowed_langs()) + ')')
     url, key = gateway.configuration(db, model.provider)
     if model.provider == 'Google AI':
         from starlette.concurrency import run_in_threadpool
@@ -60,7 +60,7 @@ async def transcribe(file: UploadFile = File(...), model_id: str = Form(''), lan
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(60, connect=10), follow_redirects=False) as client:
             name = (file.filename or 'speech.webm').replace('\\', '/').split('/')[-1][:80]  # providers read the audio format from the file name
-            r = await client.post(url + '/audio/transcriptions', headers=gateway.headers(key), data={'model': model.api_id, 'language': language}, files={'file': (name, data, file.content_type or 'audio/webm')})
+            r = await client.post(url + '/audio/transcriptions', headers=gateway.headers(key), data={'model': model.api_id, **({} if language == 'auto' else {'language': language})}, files={'file': (name, data, file.content_type or 'audio/webm')})
             r.raise_for_status(); text = (r.json().get('text') or '').strip()
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 402: raise HTTPException(402, BALANCE_MSG)
