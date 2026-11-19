@@ -51,6 +51,8 @@ Most RAG demos stop at "embed, retrieve, prompt". This project covers what an or
 ### Governance and operations
 - Roles: Super Admin, Department Admin, User; knowledge-base and document ACLs by user, department or group
 - **Departments** own knowledge bases and have their own admins and members
+- **Per-user spending quota** per day, week or month (UTC; day resets at 00:00, week on Monday, month on the 1st); chat is refused once the quota is used, and an alert is raised at the configured share
+- **Department admin permissions** can be switched off in `.env`: `DEPARTMENT_ADMIN_MANAGE_USERS=false` stops them adding, renaming, suspending or setting quotas for users and changing department members (and also password resets); `DEPARTMENT_ADMIN_RESET_PASSWORD=false` stops only password resets. Super Admins are never restricted
 - **Thai and English names** for departments, knowledge bases, documents and users, editable in the UI and shown in the page's language (a file's extension is fixed; the English name is display-only)
 - Admin console split by purpose: Overview, Usage and billing, Security, System and infrastructure, Backup and restore
 - OIDC sign-in (code + PKCE), Argon2 passwords, hashed opaque session tokens (24 hours by default)
@@ -201,6 +203,8 @@ Delivery is Docker Compose: `compose.yaml` (base), `compose.dev.yaml` (exposes P
 | --- | --- | --- |
 | `SESSION_HOURS` | `24` | How long a sign-in lasts, counted from signing in |
 | `VOICE_LANGUAGES` | `th,en` | Languages voice chat and speech-to-text accept |
+| `DEPARTMENT_ADMIN_MANAGE_USERS` | `true` | `false` stops department admins managing users in their department (add, rename, suspend, quota, members) and resetting passwords |
+| `DEPARTMENT_ADMIN_RESET_PASSWORD` | `true` | `false` stops department admins resetting the password of an internal account |
 | `SEED_SAMPLE_DATA` | `false` | Load the sample organisation, documents and department |
 | `SEED_SAMPLE_SKILLS` | `true` | Add the nine ready-made AI skills on start |
 | `RERANK_MIN_SCORE` | `0.003` | Drop passages the reranker scores below this (meaningless queries score below 0.001) |
@@ -217,7 +221,7 @@ See [docs/model-configuration.md](docs/model-configuration.md) for providers and
 
 ```bash
 docker compose -f compose.yaml -f compose.dev.yaml up -d postgres   # exposes Postgres on 127.0.0.1 only
-make test                                                           # 351 backend tests
+make test                                                           # 353 backend tests
 cd apps/web && npm run typecheck && npm run test && npm run build   # 81 web tests
 docker compose exec -T api python -m hub.integration_check          # real Postgres, S3, Qdrant, Celery
 docker compose exec -T api python -m hub.rls_check                  # verifies row-level security

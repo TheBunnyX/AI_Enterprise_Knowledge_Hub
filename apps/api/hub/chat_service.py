@@ -8,7 +8,7 @@ from sqlalchemy import select,func
 from .database import SessionLocal
 from .models import Organization,Conversation,Message,Usage,Audit,uid
 from .feature_models import ModelPolicy,UserPreference
-from .policies import choose_model,available_models,enforce_user_quota,month_spend
+from .policies import choose_model,available_models,enforce_user_quota,user_spend,PERIOD_TH
 from .retrieval import search
 from . import gateway, savings, multimodal
 
@@ -222,7 +222,7 @@ async def _chat_response(body,request,u,db):
         reserve_input=sum(len(m['content']) for m in messages)
         reservation.cost=max((reserve_input*m['input_price']+max_out*m['output_price'])/1e6 for m in snapshots)
         if policy and policy.monthly_budget and spent+reservation.cost>policy.monthly_budget:raise HTTPException(429,'งบประมาณคงเหลือไม่พอสำหรับคำขอนี้')
-        if u.monthly_budget and month_spend(db,u.id)>u.monthly_budget:raise HTTPException(429,'งบประมาณรายเดือนของคุณไม่พอสำหรับคำขอนี้')
+        if u.monthly_budget and user_spend(db,u)>u.monthly_budget:raise HTTPException(429,f'งบประมาณ{PERIOD_TH.get(u.budget_period,"รายเดือน")}ของคุณไม่พอสำหรับคำขอนี้')
     db.commit()
 
     from .tracing import ChatTrace

@@ -129,7 +129,7 @@ def test_user_quota_scope_and_enforcement(admin):
     assert admin.put(f"/api/team/users/{p['m1']}/quota", json={'monthly_budget': -1}).status_code == 422
     assert admin.put(f"/api/team/users/{p['o']}/quota", json={'monthly_budget': 5}).status_code == 404  # outside department
     assert admin.put(f"/api/team/users/{p['d']}/quota", json={'monthly_budget': 5}).status_code == 404  # not self
-    assert admin.put(f"/api/team/users/{p['m1']}/quota", json={'monthly_budget': 0.5}).json() == {'monthly_budget': 0.5}
+    assert admin.put(f"/api/team/users/{p['m1']}/quota", json={'monthly_budget': 0.5}).json() == {'monthly_budget': 0.5, 'budget_period': 'month'}
     row = admin.get('/api/team/users').json()[0]
     assert row['monthly_budget'] == 0.5 and row['month_spend'] == 0.5
     # m1 already used 1 this month (seeded Usage row), so chat is refused with the personal-quota message
@@ -140,3 +140,41 @@ def test_user_quota_scope_and_enforcement(admin):
     assert admin.put(f"/api/team/users/{p['m1']}/quota", json={'monthly_budget': 0}).status_code == 200
     login(admin, 'm1@team.test')
     assert admin.post('/api/chat', json={'question': 'hello'}).status_code != 429
+
+def test_department_admin_switches(admin, monkeypatch):
+    t = tenant_of('admin@local.test'); p = seed_people(t)
+    login(admin, 'd@team.test')
+    assert admin.get('/api/team/permissions').json() == {'manage_users': True, 'reset_password': True}
+    monkeypatch.setenv('DEPARTMENT_ADMIN_RESET_PASSWORD', 'false')
+    assert admin.get('/api/team/permissions').json() == {'manage_users': True, 'reset_password': False}
+    assert admin.post(f"/api/team/users/{p['m1']}/password", json={'password': PW + 'x'}).status_code == 403
+    assert admin.put(f"/api/team/users/{p['m1']}", json={'name': 'ok'}).status_code == 200
+    monkeypatch.setenv('DEPARTMENT_ADMIN_MANAGE_USERS', 'false')
+    for r in (admin.post('/api/team/users', json={'name': 'N', 'email': 'sw@team.test', 'password': PW}),
+              admin.put(f"/api/team/users/{p['m1']}", json={'name': 'no'}),
+              admin.post(f"/api/team/users/{p['m1']}/toggle"),
+              admin.put(f"/api/team/users/{p['m1']}/quota", json={'monthly_budget': 1}),
+              admin.post(f"/api/team/departments/{p['dept']}/members", json={'user_id': p['o']}),
+              admin.delete(f"/api/team/departments/{p['dept']}/members/{p['m1']}")):
+        assert r.status_code == 403
+    assert admin.post(f"/api/team/users/{p['m1']}/password", json={'password': PW + 'x'}).status_code == 403
+    monkeypatch.setenv('DEPARTMENT_ADMIN_RESET_PASSWORD', 'true')  # still off: managing users is off
+    assert admin.get('/api/team/permissions').json() == {'manage_users': False, 'reset_password': False}
+    assert admin.get('/api/team/users').status_code == 200  # viewing usage stays allowed
+    from hub.team_routes import allowed
+    assert allowed(User(role='SUPER_ADMIN'), 'DEPARTMENT_ADMIN_MANAGE_USERS')  # a Super Admin is never switched off
+
+def test_quota_period_day_week_month(admin):
+    from datetime import datetime, timezone
+    from hub.policies import period_start
+    assert period_start('day', datetime(2026, 11, 20, tzinfo=timezone.utc)) == '2026-11-20'
+    assert period_start('week', datetime(2026, 11, 20, tzinfo=timezone.utc)) == '2026-11-16'  # Friday -> Monday
+    assert period_start('month', datetime(2026, 11, 20, tzinfo=timezone.utc)) == '2026-11-01'
+    t = tenant_of('admin@local.test'); p = seed_people(t)
+    login(admin, 'd@team.test')
+    r = admin.put(f"/api/team/users/{p['m1']}/quota", json={'monthly_budget': 0.25, 'period': 'day'})
+    assert r.json() == {'monthly_budget': 0.25, 'budget_period': 'day'}
+    row = [x for x in admin.get('/api/team/users').json() if x['id'] == p['m1']][0]
+    assert row['budget_period'] == 'day' and row['month_spend'] == 0.5  # the seeded 0.5 USD was spent today
+    assert admin.put(f"/api/team/users/{p['m1']}/quota", json={'monthly_budget': 1, 'period': 'year'}).status_code == 422
+    assert admin.put(f"/api/team/users/{p['m1']}/quota", json={'monthly_budget': 1}).json()['budget_period'] == 'month'

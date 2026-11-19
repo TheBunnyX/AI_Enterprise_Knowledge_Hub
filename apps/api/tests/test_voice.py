@@ -53,4 +53,4 @@ def test_requires_login(client):
 
 def test_my_quota_endpoint(admin):
     r = admin.get('/api/me/quota')
-    assert r.status_code == 200 and set(r.json()) == {'monthly_budget', 'month_spend'}
+    assert r.status_code == 200 and set(r.json()) == {'monthly_budget', 'budget_period', 'month_spend'}

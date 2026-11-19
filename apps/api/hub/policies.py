@@ -1,5 +1,5 @@
 from fastapi import HTTPException
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from sqlalchemy import select, func
 from .models import KnowledgeBase, AIModel, Document, Usage
 from .feature_models import KBPolicy, DocumentState, ModelPolicy
@@ -12,8 +12,24 @@ def month_spend(db,user_id):
     month=datetime.now(timezone.utc).strftime('%Y-%m')
     return float(db.scalar(select(func.coalesce(func.sum(Usage.cost),0)).where(Usage.user_id==user_id,Usage.created_at.startswith(month))))
 
+PERIODS=('day','week','month')
+PERIOD_TH={'day':'รายวัน','week':'รายสัปดาห์','month':'รายเดือน'}
+
+def period_start(period,now=None):
+    """First moment (UTC date string) of the current day, ISO week (Monday) or calendar month."""
+    d=(now or datetime.now(timezone.utc)).date()
+    if period=='day':return d.isoformat()
+    if period=='week':return (d-timedelta(days=d.weekday())).isoformat()
+    return d.replace(day=1).isoformat()
+
+def period_spend(db,user_id,period='month'):
+    """USD a user has spent in the current day, week or month (UTC), including reservations still running."""
+    return float(db.scalar(select(func.coalesce(func.sum(Usage.cost),0)).where(Usage.user_id==user_id,Usage.created_at>=period_start(period))))
+
+def user_spend(db,u):return period_spend(db,u.id,u.budget_period or 'month')
+
 def enforce_user_quota(db,u):
-    if u.monthly_budget and month_spend(db,u.id)>=u.monthly_budget:raise HTTPException(429,'ใช้งบประมาณรายเดือนของคุณครบแล้ว กรุณาติดต่อผู้ดูแล')
+    if u.monthly_budget and user_spend(db,u)>=u.monthly_budget:raise HTTPException(429,f'ใช้งบประมาณ{PERIOD_TH.get(u.budget_period,"รายเดือน")}ของคุณครบแล้ว กรุณาติดต่อผู้ดูแล')
 def visible_kbs(db,u,write=False):
     bases=db.scalars(select(KnowledgeBase).where(KnowledgeBase.tenant_id==u.tenant_id)).all()
     policies={p.knowledge_base_id:p for p in db.scalars(select(KBPolicy).where(KBPolicy.tenant_id==u.tenant_id))}

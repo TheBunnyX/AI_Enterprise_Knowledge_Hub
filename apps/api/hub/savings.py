@@ -173,10 +173,12 @@ def check_budget_alerts(tenant_id, user_id):
             user = db.get(User, user_id)
             spend = lambda *w: float(db.scalar(select(func.coalesce(func.sum(Usage.cost), 0)).where(*w, Usage.created_at.startswith(month))))
             if user and user.monthly_budget:
-                used = spend(Usage.user_id == user_id)
+                from .policies import period_spend, period_start, PERIOD_TH
+                period = user.budget_period or 'month'
+                used = period_spend(db, user_id, period)
                 if used >= user.monthly_budget * percent / 100:
-                    alerts.publish(f'user-budget:{user_id}:{month}', f'{user.name} ใช้งบถึง {used / user.monthly_budget * 100:.0f}% ของโควตา',
-                                   f'${used:.2f} จาก ${user.monthly_budget:.2f} ในเดือน {month}', tenant_id=tenant_id, user_id=user_id, severity='warning' if used < user.monthly_budget else 'critical')
+                    alerts.publish(f'user-budget:{user_id}:{period}:{period_start(period)}', f'{user.name} ใช้งบถึง {used / user.monthly_budget * 100:.0f}% ของโควตา',
+                                   f'${used:.2f} จาก ${user.monthly_budget:.2f} ({PERIOD_TH[period]}) ตั้งแต่ {period_start(period)}', tenant_id=tenant_id, user_id=user_id, severity='warning' if used < user.monthly_budget else 'critical')
             mp = db.scalar(select(ModelPolicy).where(ModelPolicy.tenant_id == tenant_id))
             if mp and mp.monthly_budget:
                 used = spend(Usage.tenant_id == tenant_id)

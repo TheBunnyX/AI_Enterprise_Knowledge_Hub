@@ -67,8 +67,9 @@ def me(u:User=Depends(current_user)): return public_user(u)
 
 @router.get('/me/quota')
 def my_quota(u:User=Depends(current_user),db:Session=Depends(db_session)):
-    from .policies import month_spend
-    return {'monthly_budget':u.monthly_budget,'month_spend':month_spend(db,u.id)}
+    from .policies import user_spend
+    # month_spend keeps its name for older clients; it is the spend in the current budget_period
+    return {'monthly_budget':u.monthly_budget,'budget_period':u.budget_period or 'month','month_spend':user_spend(db,u)}
 
 @router.get('/knowledge-bases')
 def kbs(u:User=Depends(current_user),db:Session=Depends(db_session)):

@@ -28,7 +28,8 @@ class User(Identity, Base):
     password_hash: Mapped[str]
     role: Mapped[str] = mapped_column(default='USER')
     active: Mapped[bool] = mapped_column(default=True)
-    monthly_budget: Mapped[float] = mapped_column(default=0, server_default='0')
+    monthly_budget: Mapped[float] = mapped_column(default=0, server_default='0')  # the user's budget in USD for one budget_period (name kept from when it was monthly only)
+    budget_period: Mapped[str] = mapped_column(default='month', server_default='month')  # 'day' | 'week' | 'month', counted in UTC
     last_seen: Mapped[float] = mapped_column(default=0, server_default='0')  # epoch seconds of the last authenticated request
     last_ip: Mapped[str] = mapped_column(default='', server_default='')  # address of the most recent sign-in
 
