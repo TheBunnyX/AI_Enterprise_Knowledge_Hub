@@ -1,0 +1,3 @@
+# Dokploy entry point: Compose Path = ./compose.dokploy.yaml (merges the base file with the production override).
+include:
+  - path: [compose.yaml, compose.prod.yaml]
