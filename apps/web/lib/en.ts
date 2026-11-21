@@ -337,6 +337,8 @@ export const EN:Record<string,string>={
  'ซิงก์ล่าสุดไม่สำเร็จ: {v1}':'Last sync failed: {v1}',
  'ฐานข้อมูล':'Database',
  'ดาวน์โหลด':'Download',
+ 'ดูตัวอย่าง {v1}':'Preview {v1}',
+ 'ไฟล์ชนิดนี้ดูตัวอย่างในหน้านี้ไม่ได้ แต่ AI อ่านเนื้อหาได้ตามปกติ':'This file type cannot be previewed here, but the AI can still read it.',
  'ดาวน์โหลดต้นฉบับ':'Download original',
  'ดูทั้งหมด':'View all',
  'ดูรายงานการใช้งาน':'View usage report',

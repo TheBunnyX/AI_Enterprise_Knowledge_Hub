@@ -6,7 +6,7 @@ export type Doc={id:string;can_write?:boolean;name:string;name_en?:string;knowle
 export type KB={id:string;name:string;name_en?:string;description:string;documents:number;multimodal?:boolean;department_id?:string;department?:string;department_en?:string;can_write?:boolean};
 export type Source={id:string;url:string;interval_minutes:number;enabled:boolean;document_id:string;last_checked:string;last_status:string;last_error:string};
 export type Citation={number?:number;version?:number;document_id:string;chunk_id:string;name:string;name_en?:string;page:number;snippet:string;score?:number;rerank_score?:number;url?:string;kind?:string};
-export type Message={id?:string;role:string;content:string;citations:Citation[]};
+export type Message={id?:string;role:string;content:string;citations:Citation[];attachments?:{name:string;size:number;type:string;url:string}[]};
 /** What a paused agent run waits for: a clarifying question (with optional quick replies) or approval to search the web. */
 export type AgentPending={kind:'question'|'approval';tool?:'web_search'|'save_to_library';question?:string;options?:string[];queries?:string[];file?:string;knowledge_base?:string};
 export type Model={id:string;name:string;display_name?:string;provider:string;api_id:string;category:string;enabled:boolean;configured:boolean;input_price:number;output_price:number;effort?:string;media_limits?:Record<string,string[]>;rpm?:number;tpm?:number;rpd?:number;used_rpm?:number;used_tpm?:number;used_rpd?:number};
