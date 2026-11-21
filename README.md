@@ -8,7 +8,7 @@
 
 ## Contents
 
-[Highlights](#highlights) · [Features](#features) · [Quick start](#quick-start) · [Architecture](#architecture) · [Configuration](#configuration) · [Testing and evaluation](#testing-and-evaluation) · [Project structure](#project-structure) · [Documentation](#documentation) · [Status and limitations](#status-and-limitations) · [License](#license)
+[Highlights](#highlights) · [Architecture](#architecture) · [Features](#features) · [Quick start](#quick-start) · [Configuration](#configuration) · [Testing and evaluation](#testing-and-evaluation) · [Project structure](#project-structure) · [Documentation](#documentation) · [Status and limitations](#status-and-limitations) · [License](#license)
 
 ## Highlights
 
@@ -19,20 +19,119 @@ Most RAG demos stop at "embed, retrieve, prompt". This project covers what an or
 - **Thai end to end.** Trigram BM25 works without a Thai tokenizer, a multilingual embedding model runs locally on CPU, and OCR for scanned Thai documents runs on-premises. The UI, names and generated PDFs handle Thai and English.
 - **Cost and quality controls.** Per-model policies and budgets, caches, fallback models, and offline evaluations that can gate changes.
 
+## Architecture
+
+**Ingestion and retrieval** — how a document becomes searchable and how a question is answered
+
+![Ingestion and retrieval](docs/architecture-core.svg)
+
+**Agent, AI skills and approvals**
+
+![Agent, AI skills and approvals](docs/architecture-agent.svg)
+
+**Media, voice and generated files**
+
+![Media, voice and generated files](docs/architecture-media.svg)
+
+**Identity, departments and administration**
+
+![Identity, departments and administration](docs/architecture-identity.svg)
+
+**Operations and quality**
+
+![Operations and quality](docs/architecture-operations.svg)
+
+**Platform services**
+
+![Platform services](docs/architecture-platform.svg)
+
+The six diagrams are crops of one source drawing, [docs/architecture.svg](docs/architecture.svg); they predate the optional decision models, the PostgreSQL term index and the seed restore, which the text below covers.
+
+### Components
+
+| Component | Role |
+| --- | --- |
+| **web** — Next.js 16 (App Router) | Thai/English UI. Reads the HttpOnly session cookie on the server, proxies `/api/*` to the API and never holds a provider key. UI text comes from a Thai-keyed translation table checked by a test, so no string is left untranslated |
+| **api** — FastAPI (8000 inside, 8100 on loopback) | Authorisation authority for every request: authentication, RBAC and ACLs, search, chat, agent, admin, media and voice. Runs `hub.bootstrap`, `alembic upgrade head` and `hub.rls` on start |
+| **worker** — Celery (2 processes) | Ingestion (parse, OCR, chunk, embed, index), media jobs, generated files, source sync |
+| **ops-worker** — Celery, queue `ops` | Backups and restores, isolated so a long backup never delays ingestion |
+| **scheduler** — Celery beat | Maintenance tick: job recovery, automatic backups, due source syncs, model sync, hourly clean-up |
+| **PostgreSQL 17** | Source of truth for the organisation, users, documents, chunks, conversations, policies and audit; row-level security as a second isolation boundary |
+| **Qdrant** | Dense vectors, filtered by tenant and by the documents the caller may read |
+| **SeaweedFS** | Original files, generated media and backups through an S3 API, never public |
+| **Redis** | Celery broker, maintenance flag, admission control for concurrent chats, restore locks |
+| **ClamAV** (switch `CLAMAV_ENABLED`) | Scans uploads and attachments; when off the container exits and uploads are not scanned |
+| **llm-local** (optional profile) | Qwen 3.5 2B on llama.cpp for a fully local chat model |
+| **Langfuse** (optional overlay, switch `LANGFUSE_ENABLED`) | Self-hosted traces of retrieval and generation |
+| **Decision models** (optional, external) | `gemini-decision-1` on Google AI or `typesafe/jev-1.13`, `typesafe/jev-1.14`, `perplexity/pplx-decider-v1.2` on OpenRouter: typed yes/no, choice and score questions answered with probabilities; used by the relevance gate, citation check and library suggestion, never required |
+
+Delivery is Docker Compose: `compose.yaml` (base), `compose.dev.yaml` (exposes Postgres on loopback for tests), `compose.prod.yaml` (hardening baseline) and `compose.langfuse.yaml`.
+
+### Key flows
+
+- **Ingestion.** Upload → tenant, role and library check → size, type and signature validation → ClamAV → SHA-256 de-duplication → S3 → document row (`processing`) → Celery. The worker parses (PDF pages, slides and sheets keep their numbers; scans go through local OCR), chunks, embeds with a local multilingual e5-small ONNX model, and writes chunks to PostgreSQL and vectors to Qdrant. Failures mark the document `failed`; an admin can re-index.
+- **Search.** The server first narrows to the documents the caller may read (tenant, ACL, trash, filters), then runs BM25 over character trigrams (in memory for small corpora, from the PostgreSQL `chunk_terms` index above `SPARSE_INDEX_MIN_CHUNKS` chunks, with the same scores) and a dense search on exactly that set (int8-quantised vectors; query embeddings cached in Redis). RRF merges them, the asker's department gets a 1.2× boost, and the bge-reranker-v2-m3 cross-encoder orders the final passages.
+- **Chat.** Permission-aware retrieval → model-policy and budget check → answer cache → model routing → relevance gate (a vague question such as a greeting or a bare sum gets a clarifying reply; with decision models on, evidence that does not answer the question is dropped) → streamed generation with a repetition-loop guard → citation check (one batched decision-model call when on, otherwise the local n-gram check; unsupported `[n]` markers are dropped) → conversation, citations, usage and audit stored. Document text is treated as data; the system prompt and skills sit above it.
+- **Agent.** A LangGraph loop under hard limits (6 rounds, 10 calls, 4 in parallel, 75 s, 60k tokens). A question, a web search or a save pauses the run with a persisted interrupt that resumes after the user answers or approves.
+- **Media and files.** Image, video, speech and transcription jobs are durable rows run by the worker, with estimates, daily budgets, an approval threshold, cancel and retry; provider output is validated before storage.
+- **Voice.** The browser streams 16 kHz PCM over a WebSocket; the API relays it to the provider's live API so the key never reaches the browser, runs tool calls with the caller's own permissions, and returns 24 kHz audio and transcripts.
+- **First start.** `hub.seed_restore` downloads an encrypted `.akh` snapshot (`SEED_BACKUP_URL`) into an empty database, rebuilds the index and writes `/data/.seed-restored`; with sample data on, `DEMO_ACCOUNTS` passwords are applied to the sample users.
+- **Backup.** Encrypted snapshots of the database and files run every 7 days (`BACKUP_INTERVAL_HOURS`) or on demand in the ops-worker, with a safety snapshot before every restore.
+
+### Security layers
+
+1. **Network:** loopback-only host ports; storage, database, Qdrant and Redis are reachable only inside the Compose network.
+2. **Identity:** Argon2 passwords, optional OIDC (code + PKCE), session tokens stored as SHA-256 digests and revalidated against user and organisation status on every request.
+3. **Authorisation:** role checks, knowledge-base and document ACLs, department-scoped admin rights and per-organisation model policies. The UI hides what a user cannot do; the API enforces it.
+4. **Row isolation:** `tenant_id` filters plus PostgreSQL row-level security; the app connects as the unprivileged `hub_app` role, migrations and backups as the owner.
+5. **Content:** ClamAV, signature and archive-size validation, files served only through an authenticated attachment endpoint.
+6. **Secrets:** provider keys encrypted at rest; sensitive actions in the audit log.
+
+### Design decisions
+
+| Decision | Reason |
+| --- | --- |
+| PostgreSQL only, no SQLite mode | Row-level security and migrations behave identically in development, tests and production |
+| App runs as `hub_app`; migrations and backups use the owner role | A compromised request path cannot disable its own isolation policy |
+| BM25 over character trigrams plus dense vectors, fused with RRF | Strong Thai retrieval without a language-specific tokenizer |
+| Opaque session tokens, only the digest stored | A database leak does not yield usable sessions |
+| Files served through an authenticated endpoint, always as attachments | The bucket is never public |
+| Retrieval quality measured offline with no LLM call | Chunking and embedding changes can be compared and gated in CI |
+| Decision models are optional and fall back to local rules for two minutes after a failure | Chat never depends on an external judge; a timeout is not paid on every question |
+| The BM25 term index lives in PostgreSQL, not a separate search engine | One store to back up and restore; scores stay identical to the in-memory scan |
+| Agent pauses are persisted, not held in memory | A restart or a slow human never loses a half-finished run |
+| Provider keys stay on the server; voice is relayed through the API | The browser never sees a key |
+| `name` stays the real file name, `name_en` is display-only | The extension decides how a file is read, so renaming never changes parsing |
+
+### Tech stack
+
+| Layer | Technology |
+| --- | --- |
+| Frontend | Next.js 16, React 19, TypeScript (strict), React Query, Recharts, Vitest |
+| Backend | Python 3.12, FastAPI, SQLAlchemy 2, Alembic, Celery, LangGraph |
+| Data | PostgreSQL 17, Qdrant, Redis, SeaweedFS (S3 API) |
+| ML | `intfloat/multilingual-e5-small` and `bge-reranker-v2-m3` on ONNX Runtime (CPU), PaddleOCR |
+| Security | Argon2, OIDC/PKCE, ClamAV, PostgreSQL RLS, encrypted secrets |
+| Observability | Langfuse (optional), audit log, health and alert monitoring |
+| Optional AI judges | Gemini Decision 1 (Google AI), Jev and Perplexity decider (OpenRouter) |
+| Delivery | Docker Compose |
+
 ## Features
 
 ### Knowledge management
 - Upload PDF, DOC/DOCX, PPT/PPTX, XLS/XLSX, TXT, MD, CSV, HTML, PNG and JPEG (up to 20 MB) with SHA-256 de-duplication, versions, trash and restore
 - Asynchronous ingestion (Celery): parse, chunk (900 characters, 200 overlap), embed, index
 - Local OCR for scanned PDFs and images (PaddleOCR PP-OCRv5, Thai and English)
-- ClamAV scanning before a file is read or stored (an admin can switch it off; the change is confirmed and audited)
+- ClamAV scanning before a file is read or stored; switch it with `CLAMAV_ENABLED=true|false` in `.env` (`false` also idles the container; `scripts/clamav.sh on|off` removes or starts it) or, as an admin, in the app (confirmed and audited)
 - Scheduled mirroring of https sources, re-indexed only when the content hash changes
 - Optional multimodal RAG: charts, diagrams and scanned pages are described, embedded and searched with the text ([details](docs/multimodal-rag.md))
 
 ### Search and chat
-- Keyword (BM25), vector and hybrid search fused with Reciprocal Rank Fusion, an optional cross-encoder reranker, and a small boost for the asker's own department
+- Keyword (BM25), vector and hybrid search fused with Reciprocal Rank Fusion, an optional cross-encoder reranker, and a small boost for the asker's own department. Above `SPARSE_INDEX_MIN_CHUNKS` chunks BM25 reads a PostgreSQL term index instead of loading every chunk into memory, with the same scores
 - **Search knowledge** opens on a browsable list of every document you may read, with library and file-type filters
 - Chat answers from documents with citations, or talks to a general model; per-question attachments are virus-scanned and not indexed; a help panel explains each control
+- Optional **decision models** (`DECISIONS_ENABLED=true`): `gemini-decision-1` (Google AI) or `typesafe/jev-1.13`, `typesafe/jev-1.14`, `perplexity/pplx-decider-v1.2` (OpenRouter) judge whether the evidence answers the question, which passage supports each cited statement, and which library fits a document; any failure falls back to the local method
+- Small local models are guarded: a repetition-loop guard stops a reply that repeats one passage, and greetings, test words and bare sums get a "please be more specific" reply instead of a search
 - **Agent mode** (LangGraph): plans and calls tools — search and read documents, exact `calculate`, `read_table` for spreadsheets, `summarize_document`, `view_figure`, web search, file creation and `save_to_library` — and pauses for a human answer or approval that survives restarts
 - Continuous-scroll PDF preview (pdf.js legacy build, works on older browsers), streaming responses, Markdown and LaTeX rendering
 - One gateway for Google AI, OpenRouter, LiteLLM and a local Qwen model, with fallback when a provider returns 429/5xx
@@ -86,9 +185,11 @@ The web UI and API bind to `127.0.0.1` only; every other service has no host por
 
 ```bash
 ./scripts/setup-langfuse.sh
-docker compose -f compose.yaml -f compose.langfuse.yaml up -d
+./scripts/langfuse.sh on     # sets LANGFUSE_ENABLED=true and starts the containers; `off` stops them
 # UI: http://localhost:3100  (credentials are in .env as LANGFUSE_INIT_*)
 ```
+
+Langfuse is off by default (`LANGFUSE_ENABLED=false`): the app sends no traces and the containers stay stopped.
 
 ### Common commands
 
@@ -105,98 +206,6 @@ make eval-deepeval   # faithfulness and citation accuracy with DeepEval (calls a
 
 In development always run Compose with `-f compose.yaml -f compose.dev.yaml`.
 
-## Architecture
-
-**Ingestion and retrieval** — how a document becomes searchable and how a question is answered
-
-![Ingestion and retrieval](docs/architecture-core.svg)
-
-**Agent, AI skills and approvals**
-
-![Agent, AI skills and approvals](docs/architecture-agent.svg)
-
-**Media, voice and generated files**
-
-![Media, voice and generated files](docs/architecture-media.svg)
-
-**Identity, departments and administration**
-
-![Identity, departments and administration](docs/architecture-identity.svg)
-
-**Operations and quality**
-
-![Operations and quality](docs/architecture-operations.svg)
-
-**Platform services**
-
-![Platform services](docs/architecture-platform.svg)
-
-The six diagrams are crops of one source drawing, [docs/architecture.svg](docs/architecture.svg).
-
-### Components
-
-| Component | Role |
-| --- | --- |
-| **web** — Next.js 16 (App Router) | Thai/English UI. Reads the HttpOnly session cookie on the server, proxies `/api/*` to the API and never holds a provider key. UI text comes from a Thai-keyed translation table checked by a test, so no string is left untranslated |
-| **api** — FastAPI (8000 inside, 8100 on loopback) | Authorisation authority for every request: authentication, RBAC and ACLs, search, chat, agent, admin, media and voice. Runs `hub.bootstrap`, `alembic upgrade head` and `hub.rls` on start |
-| **worker** — Celery (2 processes) | Ingestion (parse, OCR, chunk, embed, index), media jobs, generated files, source sync |
-| **ops-worker** — Celery, queue `ops` | Backups and restores, isolated so a long backup never delays ingestion |
-| **scheduler** — Celery beat | Maintenance tick: job recovery, automatic backups, due source syncs, model sync, hourly clean-up |
-| **PostgreSQL 17** | Source of truth for the organisation, users, documents, chunks, conversations, policies and audit; row-level security as a second isolation boundary |
-| **Qdrant** | Dense vectors, filtered by tenant and by the documents the caller may read |
-| **SeaweedFS** | Original files, generated media and backups through an S3 API, never public |
-| **Redis** | Celery broker, maintenance flag, admission control for concurrent chats, restore locks |
-| **ClamAV** | Scans uploads and attachments |
-| **llm-local** (optional profile) | Qwen 3.5 2B on llama.cpp for a fully local chat model |
-| **Langfuse** (optional overlay) | Self-hosted traces of retrieval and generation |
-
-Delivery is Docker Compose: `compose.yaml` (base), `compose.dev.yaml` (exposes Postgres on loopback for tests), `compose.prod.yaml` (hardening baseline) and `compose.langfuse.yaml`.
-
-### Key flows
-
-- **Ingestion.** Upload → tenant, role and library check → size, type and signature validation → ClamAV → SHA-256 de-duplication → S3 → document row (`processing`) → Celery. The worker parses (PDF pages, slides and sheets keep their numbers; scans go through local OCR), chunks, embeds with a local multilingual e5-small ONNX model, and writes chunks to PostgreSQL and vectors to Qdrant. Failures mark the document `failed`; an admin can re-index.
-- **Search.** The server first narrows to the documents the caller may read (tenant, ACL, trash, filters), then runs BM25 over character trigrams and a dense search on exactly that set. RRF merges them, the asker's department gets a 1.2× boost, and the bge-reranker-v2-m3 cross-encoder orders the final passages.
-- **Chat.** Permission-aware retrieval → model-policy and budget check → answer cache → model routing → streamed generation → citation check (unsupported `[n]` markers are dropped) → conversation, citations, usage and audit stored. Document text is treated as data; the system prompt and skills sit above it.
-- **Agent.** A LangGraph loop under hard limits (6 rounds, 10 calls, 4 in parallel, 75 s, 60k tokens). A question, a web search or a save pauses the run with a persisted interrupt that resumes after the user answers or approves.
-- **Media and files.** Image, video, speech and transcription jobs are durable rows run by the worker, with estimates, daily budgets, an approval threshold, cancel and retry; provider output is validated before storage.
-- **Voice.** The browser streams 16 kHz PCM over a WebSocket; the API relays it to the provider's live API so the key never reaches the browser, runs tool calls with the caller's own permissions, and returns 24 kHz audio and transcripts.
-- **Backup.** Encrypted snapshots of the database and files run on a schedule or on demand in the ops-worker, with a safety snapshot before every restore.
-
-### Security layers
-
-1. **Network:** loopback-only host ports; storage, database, Qdrant and Redis are reachable only inside the Compose network.
-2. **Identity:** Argon2 passwords, optional OIDC (code + PKCE), session tokens stored as SHA-256 digests and revalidated against user and organisation status on every request.
-3. **Authorisation:** role checks, knowledge-base and document ACLs, department-scoped admin rights and per-organisation model policies. The UI hides what a user cannot do; the API enforces it.
-4. **Row isolation:** `tenant_id` filters plus PostgreSQL row-level security; the app connects as the unprivileged `hub_app` role, migrations and backups as the owner.
-5. **Content:** ClamAV, signature and archive-size validation, files served only through an authenticated attachment endpoint.
-6. **Secrets:** provider keys encrypted at rest; sensitive actions in the audit log.
-
-### Design decisions
-
-| Decision | Reason |
-| --- | --- |
-| PostgreSQL only, no SQLite mode | Row-level security and migrations behave identically in development, tests and production |
-| App runs as `hub_app`; migrations and backups use the owner role | A compromised request path cannot disable its own isolation policy |
-| BM25 over character trigrams plus dense vectors, fused with RRF | Strong Thai retrieval without a language-specific tokenizer |
-| Opaque session tokens, only the digest stored | A database leak does not yield usable sessions |
-| Files served through an authenticated endpoint, always as attachments | The bucket is never public |
-| Retrieval quality measured offline with no LLM call | Chunking and embedding changes can be compared and gated in CI |
-| Agent pauses are persisted, not held in memory | A restart or a slow human never loses a half-finished run |
-| Provider keys stay on the server; voice is relayed through the API | The browser never sees a key |
-| `name` stays the real file name, `name_en` is display-only | The extension decides how a file is read, so renaming never changes parsing |
-
-### Tech stack
-
-| Layer | Technology |
-| --- | --- |
-| Frontend | Next.js 16, React 19, TypeScript (strict), React Query, Recharts, Vitest |
-| Backend | Python 3.12, FastAPI, SQLAlchemy 2, Alembic, Celery, LangGraph |
-| Data | PostgreSQL 17, Qdrant, Redis, SeaweedFS (S3 API) |
-| ML | `intfloat/multilingual-e5-small` and `bge-reranker-v2-m3` on ONNX Runtime (CPU), PaddleOCR |
-| Security | Argon2, OIDC/PKCE, ClamAV, PostgreSQL RLS, encrypted secrets |
-| Observability | Langfuse (optional), audit log, health and alert monitoring |
-| Delivery | Docker Compose |
-
 ## Configuration
 
 | Variable | Default | Effect |
@@ -209,6 +218,17 @@ Delivery is Docker Compose: `compose.yaml` (base), `compose.dev.yaml` (exposes P
 | `SEED_BACKUP_URL` / `SEED_BACKUP_TOKEN` | empty | First start only: download an encrypted `.akh` backup (optional Bearer token) and restore it into an empty database; never overwrites existing data. Needs the same `SECRETS_KEY` and `POSTGRES_PASSWORD` as the source |
 | `WEB_BIND` | `127.0.0.1` | Address the web port 3009 binds to (set the LAN IP when a tunnel on another host must reach it) |
 | `SEED_SAMPLE_SKILLS` | `true` | Add the nine ready-made AI skills on start |
+| `CLAMAV_ENABLED` | `true` | `false` turns virus scanning off; uploads are not scanned and the ClamAV container exits |
+| `LANGFUSE_ENABLED` | `false` | Master switch for tracing (use with `scripts/langfuse.sh`) |
+| `DECISIONS_ENABLED` / `DECISIONS_MODEL` | `false` / `gemini-decision-1` | Decision models for the relevance gate, citation check and library suggestion; an id with `/` goes to OpenRouter. Sends questions and passages to the provider |
+| `DECISIONS_RELEVANCE_MIN` | `0.25` | Evidence is dropped when the probability that it answers the question is below this |
+| `RERANK_TOP_MIN` | `0` | When the best passage scores below this the chat answers "not found" (off: real questions can score low) |
+| `DEMO_ACCOUNTS` | empty | `Name\|email\|password;...` sign-in buttons on the login page (not in production); the passwords are applied to the sample users at start |
+| `LLM_LOCAL_IDLE_SECONDS` | `300` | The local model leaves RAM after this many idle seconds (`0` keeps it loaded) |
+| `ONNX_THREADS` / `ONNX_BATCH_SIZE` / `CELERY_CONCURRENCY` | `2` / `8` / `1` | CPU tuning for a small machine such as a 4-core i5 |
+| `SPARSE_INDEX_MIN_CHUNKS` / `TERM_STOP_RATIO` | `5000` / `0.5` | BM25 switches to the PostgreSQL term index from this many chunks; terms in more than this share of chunks are left out of it |
+| `QDRANT_QUANTIZE` / `QUERY_EMBED_CACHE_SECONDS` | `true` / `86400` | int8 vector quantisation; Redis cache for repeated question embeddings |
+| `BACKUP_INTERVAL_HOURS` | `168` | Automatic backup every 7 days |
 | `RERANK_MIN_SCORE` | `0.003` | Drop passages the reranker scores below this (meaningless queries score below 0.001) |
 | `QUERY_TRANSLATION` | `true` | Chat translates a question without Thai letters into a Thai search query (one short call to the model the user chose; best effort, falls back to the original question) |
 | `CROSS_LANGUAGE_SEARCH` / `CROSS_LANGUAGE_POOL` | `true` / `20` | For a question without Thai letters, keep more dense candidates and let the reranker judge up to this many; needs a reranker |
@@ -259,7 +279,7 @@ apps/api/migrations/   Alembic migrations
 apps/api/eval/         Retrieval and answer-quality evaluation, corpus, baselines
 apps/api/tests/        Backend tests
 infrastructure/docker/ Multi-stage, non-root images
-scripts/               Environment and Langfuse setup, local startup
+scripts/               Environment, Langfuse and ClamAV switches, volume migration, local startup
 docs/                  Architecture, configuration, operations, verification, limitations
 compose*.yaml          Base, development overrides, production baseline, Langfuse
 ```
@@ -269,6 +289,12 @@ compose*.yaml          Base, development overrides, production baseline, Langfus
 ## Deploying on Dokploy
 
 Create a Compose service from this GitHub repo, set the Compose path to `./compose.dokploy.yaml`, paste your environment variables (`POSTGRES_PASSWORD`, `SECRETS_KEY`, `WEB_ORIGIN`, `WEB_BIND`, provider keys, and `SEED_BACKUP_URL` / `SEED_BACKUP_TOKEN` to start with your existing data) and deploy. Steps and cautions are in [docs/operations.md](docs/operations.md); `scripts/migrate-volumes.sh` copies raw volumes between Docker hosts instead.
+
+Cautions:
+- The seed backup is restored only into an **empty** database (marker `/data/.seed-restored`); to reload data on an existing service, delete its volumes first.
+- `POSTGRES_PASSWORD`, `SECRETS_KEY` and `BACKUP_ENCRYPTION_KEY` must equal the source's and never change afterwards.
+- `compose.dokploy.yaml` is the production profile and always empties `DEMO_ACCOUNTS`; use `./compose.yaml` only if you want the demo sign-in buttons (they show passwords on the login page).
+- After a successful start, delete the release or URL that hosts the backup and revoke its token: the archive holds all data.
 
 ## Documentation
 
@@ -282,7 +308,7 @@ A working system for development and integration, **not a production-certified p
 - English names are entered by people; nothing is machine-translated, and descriptions are still single-language (the default ones are translated in the English UI).
 - Asking in English over Thai documents is still weaker than asking in Thai (see the cross-language numbers above); the translation step needs the chosen model to be reachable and adds one short call per English question.
 - Backups live on the same host unless copied off-machine; there is no offsite replication or high availability.
-- BM25 loads authorised chunks into memory, so very large corpora need a different approach.
+- BM25 uses a PostgreSQL term index from `SPARSE_INDEX_MIN_CHUNKS` chunks; very large corpora (millions of chunks) still need a dedicated search engine.
 - Sign-in rate limiting is process-local. Production needs distributed controls, CSP, a secret manager and TLS/SSO in front (`compose.prod.yaml` is a baseline only).
 - Citations are checked against retrieved passages, but claim-level faithfulness of real model output is not proven.
 

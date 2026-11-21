@@ -13,3 +13,4 @@ playwright-report/
 test-results/
 .venv-eval/
 user_password.txt
+admin_password.txt
