@@ -155,7 +155,7 @@
 <rect x="560" y="2084" width="200" height="70" fill="#c9dcff" stroke="#1f2a44" stroke-width="2"/>
 <text x="660.0" y="2109.0" text-anchor="middle" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">Model policy</text>
 <text x="660.0" y="2129.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">allowed models · default</text>
-<text x="660.0" y="2144.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">budgets per organisation</text>
+<text x="660.0" y="2144.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">monthly budget · limits</text>
 <rect x="780" y="2084" width="190" height="70" fill="#c9dcff" stroke="#1f2a44" stroke-width="2"/>
 <text x="875.0" y="2116.5" text-anchor="middle" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">Audit log</text>
 <text x="875.0" y="2136.5" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">sensitive actions · CSV</text>
@@ -165,6 +165,8 @@
 <text x="1230" y="2010" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal"></text>
 <text x="1230" y="2032" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">Department admins manage only their</text>
 <text x="1230" y="2054" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">own department; the API enforces it.</text>
+<text x="1230" y="2076" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">Single organisation; demo account</text>
+<text x="1230" y="2098" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">passwords sync on every start.</text>
 <rect x="20" y="2202" width="1720" height="380" fill="none" stroke="#b9bcc4" stroke-width="2" stroke-dasharray="8 6"/>
 <text x="60" y="2252" text-anchor="start" font-size="38" fill="#3a3f4d" font-weight="700" font-style="italic">Operations and Quality</text>
 <rect x="60" y="2302" width="150" height="80" fill="#0a73b0" stroke="#1f2a44" stroke-width="2"/>
@@ -174,7 +176,7 @@
 <rect x="256" y="2282" width="230" height="120" fill="#c9dcff" stroke="#1f2a44" stroke-width="2"/>
 <text x="371.0" y="2317.0" text-anchor="middle" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">Maintenance tick</text>
 <text x="371.0" y="2337.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">recover stalled jobs</text>
-<text x="371.0" y="2352.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">automatic backup</text>
+<text x="371.0" y="2352.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">automatic backup · 7 days</text>
 <text x="371.0" y="2367.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">source sync · model sync</text>
 <text x="371.0" y="2382.0" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">hourly clean-up</text>
 <path d="M488,2322 L540,2322 L540,2297 L580,2297" fill="none" stroke="#2d3748" stroke-width="2.2" marker-end="url(#ah)"/>
@@ -218,10 +220,12 @@
 <text x="1132.0" y="2519.5" text-anchor="middle" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">Baseline</text>
 <text x="1132.0" y="2539.5" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">judge + corpus noted</text>
 <text x="1300" y="2290" text-anchor="start" font-size="15" fill="#1f2a44" font-weight="700" font-style="normal">Tests</text>
-<text x="1300" y="2314" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">Backend: 340 tests on a real Postgres</text>
-<text x="1300" y="2336" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">Web: 79 component tests</text>
+<text x="1300" y="2314" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">Backend: 379 tests on a real Postgres</text>
+<text x="1300" y="2336" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">Web: 91 component tests</text>
 <text x="1300" y="2358" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">Browser: 15 search-page checks</text>
 <text x="1300" y="2380" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">Row-level security check on a live DB</text>
+<text x="1300" y="2402" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">First start: seed restore from .akh</text>
+<text x="1300" y="2424" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">(only into an empty database)</text>
 <rect x="20" y="2600" width="1720" height="258" fill="none" stroke="#b9bcc4" stroke-width="2" stroke-dasharray="8 6"/>
 <text x="60" y="452" text-anchor="start" font-size="38" fill="#3a3f4d" font-weight="700" font-style="italic">Ingestion Pipeline</text>
 <text x="60" y="552" text-anchor="start" font-size="38" fill="#3a3f4d" font-weight="700" font-style="italic">Retrieval + Generation</text>
@@ -243,7 +247,7 @@
 <rect x="236" y="182" width="124" height="92" fill="#0a73b0" stroke="#1f2a44" stroke-width="2"/>
 <text x="298.0" y="216.875" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700" font-style="italic">Upload API</text>
 <text x="298.0" y="232.375" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700" font-style="italic">validate · dedupe</text>
-<text x="298.0" y="247.875" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700" font-style="italic">ClamAV scan</text>
+<text x="298.0" y="247.875" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700" font-style="italic">ClamAV (optional)</text>
 <path d="M362,228 L396,228" fill="none" stroke="#2d3748" stroke-width="2.2"  marker-end="url(#ah)"/>
 <path d="M400,194 h43 l9,9 v59 h-52 z" fill="#fff" stroke="#1f2a44" stroke-width="2.2" stroke-linejoin="round"/><path d="M443,194 v9 h9" fill="none" stroke="#1f2a44" stroke-width="2.2"/>
 <line x1="407" y1="208" x2="443" y2="208" stroke="#1f2a44" stroke-width="2.2" stroke-linecap="round"/>
@@ -337,7 +341,7 @@
 <circle cx="966" cy="496" r="7" fill="#f1e04d" stroke="#555" stroke-width="1"/>
 <text x="992" y="466" text-anchor="start" font-size="13" fill="#1f2a44" font-weight="600" font-style="normal">ONNX Runtime · CPU</text>
 <text x="992" y="488" text-anchor="start" font-size="12" fill="#1f2a44" font-weight="400" font-style="normal">multilingual-e5-small (384-d)</text>
-<text x="992" y="510" text-anchor="start" font-size="11" fill="#475569" font-weight="400" font-style="normal">shared by both pipelines</text>
+<text x="992" y="510" text-anchor="start" font-size="11" fill="#475569" font-weight="400" font-style="normal">query vectors cached in Redis</text>
 <text x="1004" y="414" text-anchor="start" font-size="17" fill="#0d7aa3" font-weight="400" font-style="italic">Embedding</text>
 <path d="M1130,425 L1200,340" fill="none" stroke="#2d3748" stroke-width="2.2"  marker-end="url(#ah)"/>
 <rect x="1198" y="290" width="40" height="44" rx="4" fill="#fff"/><path d="M1207,295 h-6 v34 h6 M1229,295 h6 v34 h-6" fill="none" stroke="#2b2f6b" stroke-width="2.4"/>
@@ -366,6 +370,7 @@
 <path d="M1612,340 v100 a60,16 0 0 0 120,0 v-100" fill="#e7efff" stroke="#1f2a44" stroke-width="2.2"/><ellipse cx="1672" cy="340" rx="60" ry="16" fill="#e7efff" stroke="#1f2a44" stroke-width="2.2"/>
 <text x="1672" y="372" text-anchor="middle" font-size="14" fill="#1f2a44" font-weight="500" font-style="normal">PostgreSQL</text>
 <text x="1672" y="394" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">chunks · ACL · RLS</text>
+<text x="1672" y="408" text-anchor="middle" font-size="11" fill="#334155" font-weight="400" font-style="normal">BM25 term index</text>
 <circle cx="132" cy="690" r="12" fill="none" stroke="#1f2a44" stroke-width="4"/><path d="M108,732 a24,24 0 0 1 48,0 z" fill="none" stroke="#1f2a44" stroke-width="4" stroke-linejoin="round"/>
 <circle cx="212" cy="690" r="12" fill="none" stroke="#1f2a44" stroke-width="4"/><path d="M188,732 a24,24 0 0 1 48,0 z" fill="none" stroke="#1f2a44" stroke-width="4" stroke-linejoin="round"/>
 <circle cx="172" cy="752" r="12" fill="none" stroke="#1f2a44" stroke-width="4"/><path d="M148,794 a24,24 0 0 1 48,0 z" fill="none" stroke="#1f2a44" stroke-width="4" stroke-linejoin="round"/>
@@ -391,6 +396,8 @@
 <text x="405" y="786.0" text-anchor="middle" font-size="10.5" fill="#475569" font-weight="400" font-style="normal">citations · audit</text>
 <rect x="330" y="588" width="190" height="34" rx="6" fill="#fff" stroke="#6b7280" stroke-width="1.6" stroke-dasharray="5 4"/>
 <text x="425" y="610.0" text-anchor="middle" font-size="12.5" fill="#374151" font-weight="400" font-style="normal">Langfuse trace (optional)</text>
+<rect x="545" y="588" width="200" height="34" rx="6" fill="#fff" stroke="#6b7280" stroke-width="1.6" stroke-dasharray="5 4"/>
+<text x="645" y="610.0" text-anchor="middle" font-size="12.5" fill="#374151" font-weight="400" font-style="normal">Decision models (optional)</text>
 <path d="M405,648 L405,624" fill="none" stroke="#6b7280" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#ah)"/>
 <rect x="560" y="640" width="140" height="110" fill="#c9dcff" stroke="#1f2a44" stroke-width="2.4"/>
 <text x="630" y="662" text-anchor="middle" font-size="14" fill="#1f2a44" font-weight="600" font-style="normal">Agent tools</text>
@@ -426,8 +433,8 @@
 <rect x="960" y="715" width="120" height="66" fill="#0a73b0" stroke="#1f2a44" stroke-width="2"/>
 <text x="1020.0" y="744.4" text-anchor="middle" font-size="14" fill="#fff" font-weight="700" font-style="italic">BM25</text>
 <text x="1020.0" y="761.4" text-anchor="middle" font-size="14" fill="#fff" font-weight="700" font-style="italic">(trigram)</text>
-<text x="1020" y="800" text-anchor="middle" font-size="11" fill="#475569" font-weight="400" font-style="normal">scored in Python over the</text>
-<text x="1020" y="814" text-anchor="middle" font-size="11" fill="#475569" font-weight="400" font-style="normal">allowed chunks (PostgreSQL)</text>
+<text x="1020" y="800" text-anchor="middle" font-size="11" fill="#475569" font-weight="400" font-style="normal">in memory for small corpora;</text>
+<text x="1020" y="814" text-anchor="middle" font-size="11" fill="#475569" font-weight="400" font-style="normal">PostgreSQL term index above that</text>
 <text x="850" y="590" text-anchor="end" font-size="17" fill="#0d7aa3" font-weight="400" font-style="italic">Embedding</text>
 <path d="M1120,540 L1440,486" fill="none" stroke="#2d3748" stroke-width="2.2"  marker-end="url(#ah)"/>
 <text x="1290" y="556" text-anchor="middle" font-size="17" fill="#0d7aa3" font-weight="400" font-style="italic">Cosine similarity</text>
@@ -479,12 +486,12 @@
 <text x="1062" y="744" text-anchor="middle" font-size="1" fill="#1f2a44" font-weight="400" font-style="normal"></text>
 <path d="M988,664 L872,702" fill="none" stroke="#2d3748" stroke-width="2.2"  marker-end="url(#ah)"/>
 <text x="1100" y="830" text-anchor="start" font-size="15" fill="#3a3f4d" font-weight="700" font-style="normal">How one question is answered</text>
-<text x="1100" y="856" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">1  Check quota, budget and the answer cache</text>
+<text x="1100" y="856" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">1  Check quota, budget, answer cache; vague questions get a short reply</text>
 <text x="1100" y="878" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">2  Limit the search to the tenant, knowledge base and ACL</text>
 <text x="1100" y="900" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">3  Dense search in Qdrant + BM25 in PostgreSQL (+ picture vectors)</text>
-<text x="1100" y="922" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">4  Fuse the two rankings with RRF (top 4), then rerank and drop weak ones</text>
-<text x="1100" y="944" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">5  Send the evidence (and pictures) to the LLM, stream the answer</text>
-<text x="1100" y="966" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">6  cite_check fixes [n] markers; save message, usage, audit; trace</text>
+<text x="1100" y="922" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">4  Fuse with RRF, rerank, drop weak ones; optional decision-model relevance gate</text>
+<text x="1100" y="944" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">5  Send the evidence (and pictures) to the LLM, stream the answer; a loop guard cuts repeats</text>
+<text x="1100" y="966" text-anchor="start" font-size="13" fill="#334155" font-weight="400" font-style="normal">6  cite_check (decision model optional) fixes [n] markers; save message, usage, audit; trace</text>
 <rect x="40" y="2658" width="270" height="176" rx="10" fill="#fff" stroke="#cbd5e1" stroke-width="1.6"/>
 <rect x="40" y="2658" width="270" height="34" rx="10" fill="#0d7aa3"/><rect x="40" y="2678" width="270" height="14" fill="#0d7aa3"/>
 <text x="54" y="2682" text-anchor="start" font-size="16" fill="#fff" font-weight="700" font-style="normal">Voice chat</text>
@@ -523,11 +530,11 @@
 <rect x="1465" y="2658" width="270" height="176" rx="10" fill="#fff" stroke="#cbd5e1" stroke-width="1.6"/>
 <rect x="1465" y="2658" width="270" height="34" rx="10" fill="#475569"/><rect x="1465" y="2678" width="270" height="14" fill="#475569"/>
 <text x="1479" y="2682" text-anchor="start" font-size="16" fill="#fff" font-weight="700" font-style="normal">Operations</text>
-<text x="1479" y="2718" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Celery beat: maintenance + 24 h backups</text>
+<text x="1479" y="2718" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Celery beat: maintenance + 7-day backups</text>
 <text x="1479" y="2746" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Encrypted backups, safety snapshot</text>
 <text x="1479" y="2774" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">ClamAV, alerts, infrastructure health</text>
 <text x="1479" y="2802" text-anchor="start" font-size="12" fill="#334155" font-weight="400" font-style="normal">Langfuse traces, Ragas scores</text>
 <text x="60" y="2884" text-anchor="start" font-size="13" fill="#475569" font-weight="400" font-style="normal">Every query is filtered by tenant and ACL in the API, in Qdrant and by PostgreSQL row-level security. Drawn from the code in apps/api/hub.</text>
-<text x="60" y="2904" text-anchor="start" font-size="13" fill="#475569" font-weight="400" font-style="normal">Services: web (Next.js), api (FastAPI), worker + scheduler + ops-worker (Celery), postgres, redis, qdrant, seaweedfs, clamav, llm-local; optional Langfuse stack.</text>
-<text x="60" y="2924" text-anchor="start" font-size="13" fill="#475569" font-weight="400" font-style="normal">The UI is in Thai and English (names are shown in the page language); voice chat accepts only Thai and English. Delivery: Docker Compose (dev, production baseline, Langfuse overlay), loopback-only host ports, migrations run on start.</text>
+<text x="60" y="2904" text-anchor="start" font-size="13" fill="#475569" font-weight="400" font-style="normal">Services: web (Next.js), api (FastAPI), worker + scheduler + ops-worker (Celery), postgres, redis, qdrant, seaweedfs, clamav (optional), llm-local (sleeps when idle); optional Langfuse stack.</text>
+<text x="60" y="2924" text-anchor="start" font-size="13" fill="#475569" font-weight="400" font-style="normal">The UI is in Thai and English (names are shown in the page language); voice chat accepts only Thai and English. Delivery: Docker Compose (dev, production, Dokploy, Langfuse overlay), loopback-only host ports, migrations run on start.</text>
 </svg>

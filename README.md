@@ -45,27 +45,27 @@ Most RAG demos stop at "embed, retrieve, prompt". This project covers what an or
 
 ![Platform services](docs/architecture-platform.svg)
 
-The six diagrams are crops of one source drawing, [docs/architecture.svg](docs/architecture.svg); they predate the optional decision models, the PostgreSQL term index and the seed restore, which the text below covers.
+The six diagrams are crops of one source drawing, [docs/architecture.svg](docs/architecture.svg), drawn from the current code.
 
 ### Components
 
 | Component | Role |
 | --- | --- |
 | **web** — Next.js 16 (App Router) | Thai/English UI. Reads the HttpOnly session cookie on the server, proxies `/api/*` to the API and never holds a provider key. UI text comes from a Thai-keyed translation table checked by a test, so no string is left untranslated |
-| **api** — FastAPI (8000 inside, 8100 on loopback) | Authorisation authority for every request: authentication, RBAC and ACLs, search, chat, agent, admin, media and voice. Runs `hub.bootstrap`, `alembic upgrade head` and `hub.rls` on start |
-| **worker** — Celery (2 processes) | Ingestion (parse, OCR, chunk, embed, index), media jobs, generated files, source sync |
+| **api** — FastAPI (8000 inside, `API_PORT` (default 8100) on loopback) | Authorisation authority for every request: authentication, RBAC and ACLs, search, chat, agent, admin, media and voice. Runs `hub.bootstrap`, `alembic upgrade head` and `hub.rls` on start |
+| **worker** — Celery (`CELERY_CONCURRENCY` processes, default 1) | Ingestion (parse, OCR, chunk, embed, index), media jobs, generated files, source sync |
 | **ops-worker** — Celery, queue `ops` | Backups and restores, isolated so a long backup never delays ingestion |
 | **scheduler** — Celery beat | Maintenance tick: job recovery, automatic backups, due source syncs, model sync, hourly clean-up |
-| **PostgreSQL 17** | Source of truth for the organisation, users, documents, chunks, conversations, policies and audit; row-level security as a second isolation boundary |
+| **PostgreSQL 17** | Source of truth for the organisation, users, documents, chunks, conversations, policies and audit; the BM25 term index (`chunk_terms`); row-level security as a second isolation boundary |
 | **Qdrant** | Dense vectors, filtered by tenant and by the documents the caller may read |
 | **SeaweedFS** | Original files, generated media and backups through an S3 API, never public |
 | **Redis** | Celery broker, maintenance flag, admission control for concurrent chats, restore locks |
 | **ClamAV** (switch `CLAMAV_ENABLED`) | Scans uploads and attachments; when off the container exits and uploads are not scanned |
-| **llm-local** (optional profile) | Qwen 3.5 2B on llama.cpp for a fully local chat model |
+| **llm-local** (optional profile) | Qwen 3.5 2B on llama.cpp for a fully local chat model; unloads from RAM after `LLM_LOCAL_IDLE_SECONDS` idle and loads on the next request; reached only over the Compose network (no host port outside `compose.dev.yaml`) |
 | **Langfuse** (optional overlay, switch `LANGFUSE_ENABLED`) | Self-hosted traces of retrieval and generation |
 | **Decision models** (optional, external) | `gemini-decision-1` on Google AI or `typesafe/jev-1.13`, `typesafe/jev-1.14`, `perplexity/pplx-decider-v1.2` on OpenRouter: typed yes/no, choice and score questions answered with probabilities; used by the relevance gate, citation check and library suggestion, never required |
 
-Delivery is Docker Compose: `compose.yaml` (base), `compose.dev.yaml` (exposes Postgres on loopback for tests), `compose.prod.yaml` (hardening baseline) and `compose.langfuse.yaml`.
+Delivery is Docker Compose: `compose.yaml` (base), `compose.dev.yaml` (exposes Postgres and the local model on loopback for tests), `compose.prod.yaml` (hardening baseline), `compose.dokploy.yaml` (the entry point for Dokploy: base + prod) and `compose.langfuse.yaml`.
 
 ### Key flows
 
@@ -84,8 +84,9 @@ Delivery is Docker Compose: `compose.yaml` (base), `compose.dev.yaml` (exposes P
 2. **Identity:** Argon2 passwords, optional OIDC (code + PKCE), session tokens stored as SHA-256 digests and revalidated against user and organisation status on every request.
 3. **Authorisation:** role checks, knowledge-base and document ACLs, department-scoped admin rights and per-organisation model policies. The UI hides what a user cannot do; the API enforces it.
 4. **Row isolation:** `tenant_id` filters plus PostgreSQL row-level security; the app connects as the unprivileged `hub_app` role, migrations and backups as the owner.
-5. **Content:** ClamAV, signature and archive-size validation, files served only through an authenticated attachment endpoint.
+5. **Content:** ClamAV (when `CLAMAV_ENABLED`), signature and archive-size validation, files served only through an authenticated attachment endpoint.
 6. **Secrets:** provider keys encrypted at rest; sensitive actions in the audit log.
+7. **Data leaving the organisation:** only when an admin turns it on: hosted LLM providers, decision models (`DECISIONS_ENABLED`: the question and the retrieved passages go to Google AI or OpenRouter), multimodal RAG (pictures go to Google AI) and web search. A provider's own key is the only key ever sent to it; every external judge falls back to a local rule when it fails.
 
 ### Design decisions
 
