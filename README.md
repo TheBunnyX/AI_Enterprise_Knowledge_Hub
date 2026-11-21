@@ -1,6 +1,6 @@
 # AI Knowledge Hub
 
-**A multi-tenant, enterprise knowledge platform.** Upload company documents, search them with hybrid retrieval, and get answers with **page-level citations** — backed by role- and department-based access control, PostgreSQL row-level security and measurable answer quality.
+**A single-organization enterprise knowledge platform.** Upload company documents, search them with hybrid retrieval, and get answers with **page-level citations** — backed by role- and department-based access control, PostgreSQL row-level security and measurable answer quality.
 
 ![AI Knowledge Hub home page, English UI](docs/screenshots/preview.jpg)
 
@@ -14,7 +14,7 @@
 
 Most RAG demos stop at "embed, retrieve, prompt". This project covers what an organisation needs before it can trust such a system:
 
-- **Tenant isolation that does not rest on one `WHERE` clause.** Every request is filtered by tenant in the API, and PostgreSQL row-level security enforces the same boundary underneath, so a forgotten filter cannot leak another tenant's rows.
+- **Data isolation that does not rest on one `WHERE` clause.** The platform serves a single organisation. Every request is still filtered by `tenant_id` in the API, and PostgreSQL row-level security enforces the same boundary underneath, so a forgotten filter cannot leak rows. The API cannot create a second organisation.
 - **Answers you can verify.** Each answer cites the document and page; the original PDF opens with the cited passage highlighted; a citation checker re-points `[n]` markers to the passages that actually support each statement.
 - **Thai end to end.** Trigram BM25 works without a Thai tokenizer, a multilingual embedding model runs locally on CPU, and OCR for scanned Thai documents runs on-premises. The UI, names and generated PDFs handle Thai and English.
 - **Cost and quality controls.** Per-model policies and budgets, caches, fallback models, and offline evaluations that can gate changes.
@@ -142,7 +142,7 @@ The six diagrams are crops of one source drawing, [docs/architecture.svg](docs/a
 | **worker** — Celery (2 processes) | Ingestion (parse, OCR, chunk, embed, index), media jobs, generated files, source sync |
 | **ops-worker** — Celery, queue `ops` | Backups and restores, isolated so a long backup never delays ingestion |
 | **scheduler** — Celery beat | Maintenance tick: job recovery, automatic backups, due source syncs, model sync, hourly clean-up |
-| **PostgreSQL 17** | Source of truth for tenants, users, documents, chunks, conversations, policies and audit; row-level security as a second tenant boundary |
+| **PostgreSQL 17** | Source of truth for the organisation, users, documents, chunks, conversations, policies and audit; row-level security as a second isolation boundary |
 | **Qdrant** | Dense vectors, filtered by tenant and by the documents the caller may read |
 | **SeaweedFS** | Original files, generated media and backups through an S3 API, never public |
 | **Redis** | Celery broker, maintenance flag, admission control for concurrent chats, restore locks |
@@ -167,7 +167,7 @@ Delivery is Docker Compose: `compose.yaml` (base), `compose.dev.yaml` (exposes P
 1. **Network:** loopback-only host ports; storage, database, Qdrant and Redis are reachable only inside the Compose network.
 2. **Identity:** Argon2 passwords, optional OIDC (code + PKCE), session tokens stored as SHA-256 digests and revalidated against user and organisation status on every request.
 3. **Authorisation:** role checks, knowledge-base and document ACLs, department-scoped admin rights and per-organisation model policies. The UI hides what a user cannot do; the API enforces it.
-4. **Tenant isolation:** `tenant_id` filters plus PostgreSQL row-level security; the app connects as the unprivileged `hub_app` role, migrations and backups as the owner.
+4. **Row isolation:** `tenant_id` filters plus PostgreSQL row-level security; the app connects as the unprivileged `hub_app` role, migrations and backups as the owner.
 5. **Content:** ClamAV, signature and archive-size validation, files served only through an authenticated attachment endpoint.
 6. **Secrets:** provider keys encrypted at rest; sensitive actions in the audit log.
 
@@ -206,6 +206,8 @@ Delivery is Docker Compose: `compose.yaml` (base), `compose.dev.yaml` (exposes P
 | `DEPARTMENT_ADMIN_MANAGE_USERS` | `true` | `false` stops department admins managing users in their department (add, rename, suspend, quota, members) and resetting passwords |
 | `DEPARTMENT_ADMIN_RESET_PASSWORD` | `true` | `false` stops department admins resetting the password of an internal account |
 | `SEED_SAMPLE_DATA` | `false` | Load the sample organisation, documents and department |
+| `SEED_BACKUP_URL` / `SEED_BACKUP_TOKEN` | empty | First start only: download an encrypted `.akh` backup (optional Bearer token) and restore it into an empty database; never overwrites existing data. Needs the same `SECRETS_KEY` and `POSTGRES_PASSWORD` as the source |
+| `WEB_BIND` | `127.0.0.1` | Address the web port 3009 binds to (set the LAN IP when a tunnel on another host must reach it) |
 | `SEED_SAMPLE_SKILLS` | `true` | Add the nine ready-made AI skills on start |
 | `RERANK_MIN_SCORE` | `0.003` | Drop passages the reranker scores below this (meaningless queries score below 0.001) |
 | `QUERY_TRANSLATION` | `true` | Chat translates a question without Thai letters into a Thai search query (one short call to the model the user chose; best effort, falls back to the original question) |
@@ -263,6 +265,10 @@ compose*.yaml          Base, development overrides, production baseline, Langfus
 ```
 
 </details>
+
+## Deploying on Dokploy
+
+Create a Compose service from this GitHub repo, set the Compose path to `./compose.dokploy.yaml`, paste your environment variables (`POSTGRES_PASSWORD`, `SECRETS_KEY`, `WEB_ORIGIN`, `WEB_BIND`, provider keys, and `SEED_BACKUP_URL` / `SEED_BACKUP_TOKEN` to start with your existing data) and deploy. Steps and cautions are in [docs/operations.md](docs/operations.md); `scripts/migrate-volumes.sh` copies raw volumes between Docker hosts instead.
 
 ## Documentation
 

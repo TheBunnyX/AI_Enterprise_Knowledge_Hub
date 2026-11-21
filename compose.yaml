@@ -19,6 +19,7 @@ x-api-env: &api-env
   S3_BUCKET: knowledge
   QDRANT_URL: http://qdrant:6333
   # Optional Langfuse tracing (compose.langfuse.yaml). Off while the keys are empty.
+  LANGFUSE_ENABLED: ${LANGFUSE_ENABLED:-false}
   LANGFUSE_HOST: ${LANGFUSE_HOST:-}
   LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
   LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
@@ -39,6 +40,11 @@ x-api-env: &api-env
   EMBEDDING_BATCH_SIZE: ${EMBEDDING_BATCH_SIZE:-32}
   RERANK_MODEL: ${RERANK_MODEL:-}
   RERANK_MIN_SCORE: ${RERANK_MIN_SCORE:-0.003}
+  RERANK_TOP_MIN: ${RERANK_TOP_MIN:-0}
+  DECISIONS_ENABLED: ${DECISIONS_ENABLED:-false}
+  DECISIONS_MODEL: ${DECISIONS_MODEL:-gemini-decision-1}
+  DECISIONS_RELEVANCE_MIN: ${DECISIONS_RELEVANCE_MIN:-0.25}
+  DECISIONS_SUGGEST_MIN: ${DECISIONS_SUGGEST_MIN:-0.6}
   MULTIMODAL_RAG: ${MULTIMODAL_RAG:-false}  # pictures and questions go to Google AI when on
   MM_CAPTION_MODEL: ${MM_CAPTION_MODEL:-gemini-3.5-flash-lite}
   MM_EMBED_MODEL: ${MM_EMBED_MODEL:-gemini-embedding-2}
@@ -48,6 +54,13 @@ x-api-env: &api-env
   MM_ANSWER_IMAGES: ${MM_ANSWER_IMAGES:-2}
   ONNX_RERANK_BATCH_SIZE: ${ONNX_RERANK_BATCH_SIZE:-2}  # small batches keep the cross-encoder's peak memory low (Docker Desktop VMs often have only 4 GB)
   ONNX_THREADS: ${ONNX_THREADS:-2}
+  ONNX_BATCH_SIZE: ${ONNX_BATCH_SIZE:-8}
+  SPARSE_INDEX_MIN_CHUNKS: ${SPARSE_INDEX_MIN_CHUNKS:-5000}  # BM25 reads from the PostgreSQL term index at or above this many chunks (0 = always)
+  TERM_STOP_RATIO: ${TERM_STOP_RATIO:-0.5}  # terms in more than this share of chunks leave the term index (big corpora only; 0 = keep all)
+  QDRANT_QUANTIZE: ${QDRANT_QUANTIZE:-true}  # int8 scalar quantization of the vectors (about a quarter of the RAM)
+  QUERY_EMBED_CACHE_SECONDS: ${QUERY_EMBED_CACHE_SECONDS:-86400}  # a repeated question reuses its embedding from Redis (local model); 0 = off
+  CROSS_LANGUAGE_POOL: ${CROSS_LANGUAGE_POOL:-10}  # candidates the reranker judges for a question in another language than the passages
+  QUERY_TRANSLATION: ${QUERY_TRANSLATION:-false}  # true = an extra model call translates a question without Thai letters into a Thai search query
   OCR_LANGUAGES: ${OCR_LANGUAGES:-tha+eng}
   CHAT_ATTACHMENT_CHARS: ${CHAT_ATTACHMENT_CHARS:-12000}
   CHAT_ATTACHMENT_HOURS: ${CHAT_ATTACHMENT_HOURS:-24}
@@ -60,8 +73,9 @@ x-api-env: &api-env
   CLAMAV_HOST: clamav
   CLAMAV_PORT: '3310'
   CLAMAV_REQUIRED: 'true'
+  CLAMAV_ENABLED: ${CLAMAV_ENABLED:-true}
   BACKUP_DIR: /backups
-  BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-24}
+  BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-168}
   BACKUP_RETENTION: ${BACKUP_RETENTION:-7}
   BACKUP_ENCRYPTION_KEY: ${BACKUP_ENCRYPTION_KEY:-}
   BACKUP_REMOTE_ENDPOINT: ${BACKUP_REMOTE_ENDPOINT:-}
@@ -112,7 +126,7 @@ services:
     build:
       context: .
       dockerfile: infrastructure/docker/api.Dockerfile
-    command: ['celery','-A','hub.tasks.celery','worker','--loglevel=info','--concurrency=2']
+    command: ['celery','-A','hub.tasks.celery','worker','--loglevel=info','--concurrency=${CELERY_CONCURRENCY:-1}']
     environment: *api-env
     volumes: [api-data:/data, backups-data:/backups]
     depends_on:
@@ -150,10 +164,11 @@ services:
         cd /models;
         f=Qwen3.5-2B-Q4_K_M.gguf;
         [ -s "$${f}.ok" ] || { curl -fSL --retry 5 -C - -o "$$f" "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/$$f" && echo ok > "$${f}.ok"; };
-        export LD_LIBRARY_PATH=/app; exec /app/llama-server -m "$$f" --alias qwen3.5-2b --host 0.0.0.0 --port 8080 -t $${LLM_LOCAL_THREADS:-4} -c $${LLM_LOCAL_CONTEXT:-8192} --parallel 1 --reasoning-budget 0 --temp 0.7 --top-p 0.8 --top-k 20 --min-p 0
+        export LD_LIBRARY_PATH=/app; exec /app/llama-server -m "$$f" --alias qwen3.5-2b --host 0.0.0.0 --port 8080 -t $${LLM_LOCAL_THREADS:-3} -c $${LLM_LOCAL_CONTEXT:-8192} --parallel 1 --reasoning-budget 0 --sleep-idle-seconds $${LLM_LOCAL_IDLE_SECONDS:-300} --temp 0.7 --top-p 0.8 --top-k 20 --min-p 0 --presence-penalty 1.0 --repeat-penalty 1.1
     environment:
-      LLM_LOCAL_THREADS: ${LLM_LOCAL_THREADS:-4}
+      LLM_LOCAL_THREADS: ${LLM_LOCAL_THREADS:-3}
       LLM_LOCAL_CONTEXT: ${LLM_LOCAL_CONTEXT:-8192}
+      LLM_LOCAL_IDLE_SECONDS: ${LLM_LOCAL_IDLE_SECONDS:-300}  # the model leaves RAM after this many idle seconds and loads again on the next request; 0 = keep loaded
     volumes: [gguf:/models]
     ports: ['127.0.0.1:8202:8080']
     healthcheck:
@@ -164,14 +179,21 @@ services:
     restart: unless-stopped
   clamav:
     image: clamav/clamav:1.4.3
+    # CLAMAV_ENABLED=false: the container exits at start and stays stopped (restart only on failure), and the app skips scanning.
+    entrypoint: ['sh','-c','case "$${CLAMAV_ENABLED:-true}" in false|0|no|off) echo "ClamAV disabled"; exit 0;; esac; exec /init']
+    environment: {CLAMAV_ENABLED: '${CLAMAV_ENABLED:-true}'}
+    healthcheck:
+      test: ['CMD-SHELL','case "$$CLAMAV_ENABLED" in false|0|no|off) exit 0;; esac; clamdcheck.sh']
+      start_period: 360s
     volumes: [clamav-data:/var/lib/clamav]
-    restart: unless-stopped
+    restart: on-failure
   postgres:
     image: postgres:17.6-alpine
     environment:
       POSTGRES_USER: hub
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: hub
+    command: ['postgres','-c','shared_buffers=${POSTGRES_SHARED_BUFFERS:-512MB}','-c','effective_cache_size=${POSTGRES_CACHE_SIZE:-2GB}','-c','work_mem=16MB']  # the image default (128 MB) is tiny for the BM25 term index
     volumes: [postgres-data:/var/lib/postgresql/data]
     healthcheck:
       test: ['CMD-SHELL','pg_isready -U hub -d hub']

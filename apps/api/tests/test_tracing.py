@@ -53,6 +53,15 @@ def test_tracing_is_off_without_keys(monkeypatch):
     assert not tracing.enabled()  # all three are needed
 
 
+def test_master_switch_turns_tracing_off(monkeypatch):
+    for key, value in (('LANGFUSE_PUBLIC_KEY', 'pk'), ('LANGFUSE_SECRET_KEY', 'sk'), ('LANGFUSE_HOST', 'http://x')):
+        monkeypatch.setenv(key, value)
+    monkeypatch.setenv('LANGFUSE_ENABLED', 'true')
+    assert tracing.enabled()
+    monkeypatch.setenv('LANGFUSE_ENABLED', 'false')
+    assert not tracing.enabled()  # keys present, switch off
+
+
 def test_chat_sends_one_trace_with_retrieval_and_generation(department, langfuse):
     ask(department)
     kinds = [o.kind for o in langfuse.observations]

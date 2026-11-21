@@ -559,7 +559,7 @@ export const EN:Record<string,string>={
  'ฟีเจอร์นี้ต้องใช้บัญชีผู้ให้บริการภายนอก ระบบจะไม่แสดงสื่อจำลองเป็นผลลัพธ์จริง':'This feature needs an external provider account. The system will not present simulated media as real results.',
  'ภาพ':'Image',
  'ภาพต้นฉบับสำหรับแก้ไข (ไม่บังคับ)':'Source image to edit (optional)',
- 'ภาพรวม AI Knowledge Hub และการใช้งานของทุกองค์กร':'Overview of AI Knowledge Hub and usage across all organizations',
+ 'ภาพรวม AI Knowledge Hub และการใช้งานของระบบ':'Overview of AI Knowledge Hub and its usage',
  'ภาพรวมระบบ':'System overview',
  'ภาพรวมองค์กร สวัสดิการ และแนวปฏิบัติเบื้องต้น...':'Organization overview, benefits and basic guidelines...',
  'ภาพรวมองค์กรและฝ่ายต่าง ๆ เลือกฝ่ายเพื่อจัดการผู้ใช้ในฝ่ายนั้น':'Overview of the organization and its departments. Choose a department to manage its users.',

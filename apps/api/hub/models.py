@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from uuid import uuid4
-from sqlalchemy import String, Text, ForeignKey, JSON, UniqueConstraint
+from sqlalchemy import String, Text, ForeignKey, JSON, UniqueConstraint, Index
 from sqlalchemy.orm import Mapped, mapped_column
 from .database import Base
 from .clientip import ip_default
@@ -81,6 +81,17 @@ class Chunk(Identity, Base):
     kind: Mapped[str] = mapped_column(default='text', server_default='text')  # 'text', or 'image': a picture whose text is a vision-model description
     image_key: Mapped[str] = mapped_column(default='', server_default='')  # object-storage key of the picture (kind='image')
     mm_embedding: Mapped[list] = mapped_column(JSON, default=list, server_default='[]')  # multimodal vector of the picture itself
+    length: Mapped[int] = mapped_column(default=-1, server_default='-1')  # number of lexical tokens (text + document name) for BM25; -1 = term index not built yet
+
+class ChunkTerm(Base):
+    """Inverted index for BM25: how often a lexical token occurs in a chunk. Rows go away with their chunk."""
+    __tablename__ = 'chunk_terms'
+    chunk_id: Mapped[str] = mapped_column(ForeignKey('document_chunks.id', ondelete='CASCADE'), primary_key=True)
+    term: Mapped[str] = mapped_column(String, primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(index=True)
+    document_id: Mapped[str] = mapped_column(index=True)
+    tf: Mapped[int]
+    __table_args__ = (Index('ix_chunk_terms_tenant_term', 'tenant_id', 'term'),)
 
 class Conversation(Identity, Base):
     __tablename__ = 'conversations'

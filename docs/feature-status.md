@@ -1,59 +1,59 @@
-# สถานะฟีเจอร์ล่าสุด — 31 ตุลาคม 2026
+# Latest feature status
 
-เว็บเปิดที่ **http://localhost:3009** (หรือ http://127.0.0.1:3009) API ที่ http://localhost:8100/docs ข้อมูลเดิมเก็บไว้และ migration ปัจจุบันคือ 0004 (role เหลือ SUPER_ADMIN, DEPARTMENT_ADMIN, USER)
+The web UI is at **http://localhost:3009** (or http://127.0.0.1:3009) and the API docs at http://localhost:8100/docs. Existing data is kept. Roles are SUPER_ADMIN, DEPARTMENT_ADMIN and USER. The platform serves a single organisation.
 
-## ฟีเจอร์เพิ่มเติมรอบล่าสุด
+## Recent additions
 
-- ชุดสำรอง PostgreSQL + เอกสาร/เวอร์ชัน/สื่อ เข้ารหัส AES-256-GCM ทุก 24 ชั่วโมง เก็บ 7 ชุด ดาวน์โหลดและกู้คืนผ่าน Super Admin มี safety snapshot ก่อนแทนที่ข้อมูล
-- แผนก/กลุ่มสมาชิก สิทธิ์อ่าน/เขียนระดับคลังและเอกสาร บังคับกับการค้นหา แชท ดาวน์โหลด และ PDF
-- ClamAV สแกนก่อน parser/OCR/จัดเก็บ ปฏิเสธไฟล์เมื่อ scanner ไม่พร้อม
-- คิวงานถาวรพร้อม unique key, renewable lease, recovery ทุก 60 วินาที งานสื่อที่อาจถูกคิดเงินแล้วต้องยืนยันก่อนเรียกใหม่
-- กระดิ่งแจ้งเตือนบริการ/งานล้มเหลว แยกตามสิทธิ์ อ่านแล้ว และแจ้งสถานะกลับมาปกติ
-- PDF ต้นฉบับ เปลี่ยนหน้า/ซูม และไฮไลต์ข้อความอ้างอิงบนหน้าที่มี text layer
-- แชร์บทสนทนาให้องค์กรเดียวกันตามผู้ใช้/กลุ่มและวันหมดอายุ ผู้รับต้องมีสิทธิ์เอกสารอ้างอิงทั้งหมด และตรวจใหม่ทุกครั้งที่เปิด
+- PostgreSQL + documents, versions and media backed up with AES-256-GCM every 24 hours, 7 sets kept, downloadable and restorable from Super Admin, with a safety snapshot before data is replaced. A first-start seed restore (`SEED_BACKUP_URL`) can load a backup into an empty database.
+- Departments and groups with read and write permissions per knowledge base and document, enforced in search, chat, download and PDF.
+- ClamAV scans before parser, OCR and storage; files are rejected when the scanner is not ready.
+- Persistent job queue with unique keys, renewable leases and recovery every 60 seconds. Media jobs that may already be billed need confirmation before a retry.
+- A bell for service and failed-job alerts, filtered by permission, with read state and recovery notices.
+- Original PDF with page change, zoom and highlighting of the cited text on pages that have a text layer.
+- Conversation sharing inside the organisation by user or group with an expiry. A recipient needs access to every cited document, and this is rechecked on every open.
 
-## ฟีเจอร์หลักที่ทำงานแล้ว
+## Working core features
 
-| หมวด | สิ่งที่ใช้งานได้ |
+| Area | What works |
 | --- | --- |
-| ผู้ใช้/องค์กร | เพิ่มและแก้ไของค์กร, ระงับองค์กร/ผู้ใช้, เพิ่มบัญชี, แก้บทบาท, โควตารายเดือน, นโยบายโมเดลและงบประมาณ |
-| เข้าสู่ระบบ | Argon2/HttpOnly session, ออกจากระบบ, แก้ชื่อ/โมเดลเริ่มต้น/การแจ้งเตือน, เปลี่ยนรหัสผ่าน Local, ดูและยกเลิกเซสชัน, OIDC code+PKCE adapter |
-| คลังความรู้ | สร้าง/แก้ไขคลัง, เลือกทุกคนในองค์กรหรือจำกัดผู้ใช้, แยกสิทธิ์อ่านและอัปโหลด, บังคับสิทธิ์ใน API/ค้นหา/ดาวน์โหลด/แชท |
-| ไฟล์แนบในแชท | ปุ่มคลิปแนบ PDF, DOCX, PPTX, XLSX, TXT, MD, CSV, HTML, PNG/JPG (สูงสุด 5 ไฟล์, 20 MB) ระบบอ่านข้อความ (ภาพใช้ OCR) เก็บชั่วคราวเฉพาะผู้ใช้นั้น ไม่เข้าดัชนี ส่งให้ LLM ไม่เกิน `CHAT_ATTACHMENT_CHARS` ตัวอักษร ใช้ได้ทั้งโหมดใช้เอกสารและไม่ใช้เอกสาร ไม่รองรับ .doc/.xls รุ่นเก่า (ให้บันทึกเป็น DOCX/XLSX) |
-| เอกสาร | PDF/Office/text/image upload, SHA-256 deduplication, S3, คิว Celery, จัดทำดัชนีใหม่, เวอร์ชันและดาวน์โหลดเวอร์ชันเก่า, ถังขยะและกู้คืน |
-| OCR | PaddleOCR (PP-OCRv5) ภาษาไทย/อังกฤษ + pypdfium2 ใน Docker สำหรับรูปภาพและหน้า PDF สแกน จำกัด PDF 200 หน้า/ไฟล์ 20 MB |
-| ค้นหา | BM25 (ไม่สนวรรณยุกต์ไทย) + tenant/KB-filtered Qdrant + RRF, embedding `local:multilingual-e5-small` และ reranker `local:bge-reranker-v2-m3` (ONNX บน CPU) หรือผ่าน Gateway, แยก collection ตามโมเดล/dimensions/version |
-| RAG | สตรีมข้อความ SSE จาก Gateway → NDJSON → UI, หยุดแสดงคำตอบ, ประวัติและบริบทสนทนา, อ้างอิงเวอร์ชันเดิมของเอกสาร, feedback, โมเดลสำรองที่องค์กรอนุญาต |
-| บริการ AI | ตั้ง URL/API key ใน UI, เข้ารหัส key ด้วย Fernet, ทดสอบ /models และดูรหัสโมเดล, เปิด/ปิดโมเดล, กำหนดราคา |
-| สื่อ | Image / Video / STT / TTS ผ่าน LiteLLM-compatible API, งานเบื้องหลัง, สถานะและความคืบหน้า, ยกเลิก/ลองใหม่, เก็บผลใน S3, preview/download เฉพาะเจ้าของ |
-| รายงาน | กิจกรรมจริง, tokens และราคาโดยประมาณ, งบรายเดือน/สถานะถึงงบ, ไม่แสดงงานสื่อที่ยังไม่แจ้งราคาเป็นของฟรี, export CSV ตามช่วงเวลา/องค์กร, Audit log |
+| Users and organisation | Edit the organisation, suspend users, add accounts, change roles, per-user quota per day / week / month, model policy and budget |
+| Sign-in | Argon2 and HttpOnly sessions, sign-out, edit name / default model / notifications, change a local password, view and revoke sessions, OIDC code + PKCE adapter |
+| Knowledge bases | Create and edit; open to everyone in the organisation or restricted to users; separate read and upload rights; enforced in the API, search, download and chat |
+| Chat attachments | A paperclip attaches PDF, DOCX, PPTX, XLSX, TXT, MD, CSV, HTML, PNG/JPG (up to 5 files, 20 MB). Text is read (images via OCR), kept temporarily for that user only, not indexed, and sent to the LLM up to `CHAT_ATTACHMENT_CHARS` characters. Works with and without documents. Legacy .doc / .xls are not supported (save as DOCX / XLSX) |
+| Documents | PDF, Office, text and image upload, SHA-256 deduplication, S3, Celery queue, reindexing, versions and old-version download, trash and restore |
+| OCR | PaddleOCR (PP-OCRv5) Thai and English plus pypdfium2 in Docker for images and scanned PDF pages; PDFs limited to 200 pages and 20 MB |
+| Search | BM25 (Thai tone marks ignored) + KB-filtered Qdrant + RRF, embedding `local:multilingual-e5-small` and reranker `local:bge-reranker-v2-m3` (ONNX on CPU) or through a gateway, separate collection per model / dimensions / version |
+| RAG | SSE from the gateway → NDJSON → UI, stop generation, history and conversation context, citations pinned to the original document version, feedback, fallback model permitted by the organisation |
+| AI services | URL and API key in the UI, keys encrypted with Fernet, test `/models` and list model IDs, enable or disable models, set prices |
+| Media | Image / Video / STT / TTS through a LiteLLM-compatible API, background jobs, status and progress, cancel and retry, results stored in S3, preview and download for the owner only |
+| Reports | Real activity, tokens and estimated cost, budgets and budget status, unpriced media jobs are not shown as free, CSV export by period, audit log |
 
-## เปิดใช้งาน AI จริง
+## Turning on real AI
 
-1. เข้า Super Admin → โมเดลและบริการ AI
-2. ระบุ Gateway URL ที่ API/worker เข้าถึงได้ เช่น Gateway ของคุณ หรือ `http://host.docker.internal:4000/v1` สำหรับบริการบน Docker Desktop host
-3. ใส่ API key แล้วบันทึก ค่าจะเข้ารหัสและไม่ถูกส่งกลับเป็นข้อความอ่านได้
-4. ทดสอบการเชื่อมต่อเพื่อดู model IDs ที่ Gateway ส่งกลับ
-5. เพิ่มโมเดลให้ตรงหมวด LLM / Image / Video / STT / TTS แล้วเปิดใช้งาน
-6. กำหนดโมเดลที่องค์กรอนุญาตที่หน้าจัดการองค์กร จากนั้นเลือกโมเดลในแชทหรือ Studio
+1. Go to Super Admin → AI models and services.
+2. Enter a gateway URL that the API and worker can reach, for example your own gateway or `http://host.docker.internal:4000/v1` for a service on the Docker Desktop host.
+3. Enter the API key and save. It is encrypted and never returned as readable text.
+4. Run the connection test to see the model IDs the gateway returns.
+5. Add models in the right category (LLM / Image / Video / STT / TTS) and enable them.
+6. Set the models the organisation allows on the organisation page, then pick a model in chat or Studio.
 
-ระบบไม่ได้เปิดโมเดลที่คาดเดาชื่อ และไม่ได้เรียกบริการเสียเงินโดยไม่มีการตั้งค่าจากคุณ ปัจจุบันไม่มี API key จากผู้ให้บริการ จึงทดสอบ network adapters ด้วย mocked responses ส่วน Docker/PDF/OCR/S3/Qdrant/Celery ใช้บริการจริง
+The system never enables a guessed model name and never calls a paid service without your configuration. No provider key was available, so the network adapters were tested with mocked responses, while Docker, PDF, OCR, S3, Qdrant and Celery use real services.
 
-## Embedding และ reranker จริง
+## Real embeddings and reranker
 
-ตั้ง `EMBEDDING_MODEL` เป็น alias จริงใน Gateway, `EMBEDDING_DIMENSIONS` ให้ตรงผลลัพธ์ และ `EMBEDDING_VERSION` เป็นเวอร์ชันดัชนี จากนั้น recreate API/worker และ reindex เอกสาร การค้นหาจะไม่ผสม chunk จาก embedding version เก่า ตั้ง `RERANK_MODEL` หาก Gateway มี `/rerank` โมเดลที่รองรับ ชื่อในหน้าทะเบียนเพียงอย่างเดียวไม่เปลี่ยน retrieval adapter
+Set `EMBEDDING_MODEL` to a real gateway alias, `EMBEDDING_DIMENSIONS` to match the output and `EMBEDDING_VERSION` to the index version, then recreate the API and worker and reindex. Search never mixes chunks from an old embedding version. Set `RERANK_MODEL` if the gateway has a `/rerank` model; a name in the registry page alone does not change the retrieval adapter.
 
-ค่าปริยายยังเป็น CPU hash embedding และคำตอบ extractive demo ที่มีป้ายกำกับ เลือกโมเดล LLM จริงในแชทเพื่อเรียกผู้ให้บริการ
+The default is still the CPU hash embedding and a labelled extractive demo answer. Choose a real LLM in chat to call a provider.
 
-## ข้อจำกัดที่ยังต้องเตรียมก่อน Production
+## Limits to address before production
 
-- ยังไม่มี PostgreSQL RLS, DLP, 2FA policy, TLS ingress, HA, OpenTelemetry หรือ Ragas/DeepEval dashboard
-- OIDC และ paid AI/media ยังไม่ได้ทดสอบกับบัญชีผู้ให้บริการจริง
-- การยกเลิกงานอาจไม่หยุดการคิดค่าบริการจาก upstream งานวิดีโอตรวจสถานะได้ไม่เกิน 15 นาที และสามารถลองตรวจต่อจาก provider job ID เดิมได้
-- งานสื่อที่ผู้ให้บริการไม่แจ้งราคาจะขึ้น “ผู้ให้บริการยังไม่แจ้ง” งบประมาณไม่สามารถรวมค่าใช้จ่ายที่ยังไม่ทราบได้
-- Chat reserve งบประมาณเป็นค่าประมาณก่อนเรียก LLM และแก้ด้วย reported tokens หากมี ไม่มี circuit breaker หรือ reconciliation กับใบแจ้งหนี้
-- ถังขยะเก็บไฟล์ไว้ ยังไม่มี retention/purge อัตโนมัติ ชุดสำรองยังอยู่เครื่องเดียวกัน ต้องคัดลอกออกนอกเครื่องและเก็บคีย์แยก
-- OCR ขึ้นกับคุณภาพภาพ ตำแหน่งตาราง/ภาพไม่ได้แสดงเป็นต้นฉบับใน text preview
-- Learned embedding/reranking adapter ถูกทดสอบด้วย mock; โมเดลจริงต้องรองรับ protocol ของ Gateway
+- No DLP, 2FA policy, TLS ingress, HA, OpenTelemetry or Ragas/DeepEval dashboard. Row-level security is present (see [limitations](limitations.md)).
+- OIDC and paid AI / media have not been tested with real provider accounts.
+- Cancelling a job may not stop upstream billing. Video status checks last at most 15 minutes and can resume from the same provider job ID.
+- A media job whose provider reports no price shows "provider has not reported"; a budget cannot include costs that are unknown.
+- Chat reserves budget as an estimate before calling the LLM and corrects it with reported tokens when available. There is no circuit breaker or invoice reconciliation.
+- The trash keeps files with no automatic retention or purge. Backups stay on the same machine; copy them off the machine and keep the key separately.
+- OCR depends on image quality, and table or image positions are not shown as the original in the text preview.
+- The learned embedding and reranking adapters were tested with mocks; a real model must support the gateway protocol.
 
-ดูผลทดสอบจริงใน verification.md เอกสารนี้เป็นสถานะล่าสุดเหนือกว่าบันทึกการส่งมอบรุ่นแรก
+See verification.md for real test results. This document is the latest status and supersedes the notes from the first delivery.

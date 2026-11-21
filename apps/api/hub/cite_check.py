@@ -32,35 +32,51 @@ def score(statement, passage):
     return max(0.0, base)
 
 
-def verify(answer, passages, total=None):
-    """passages: texts of the document citations in order ([1] is passages[0]). total: all numbered sources."""
+def verify(answer, passages, total=None, judge=None):
+    """passages: texts of the document citations in order ([1] is passages[0]). total: all numbered sources.
+
+    judge(claims) may return, for each statement, the passage numbers that support it (one batched call, e.g. Gemini Decision 1);
+    when it is missing or returns None the n-gram score below decides.
+    """
     if not answer or not passages:
         return answer
     docs = len(passages)
     total = total or docs
-    out, last = [], 0
+    parts, claims, last = [], [], 0  # parts: text, or ('judge', index, numbers) for a marker group that needs a verdict
     for m in GROUP.finditer(answer):
         statement = answer[last:m.start()]
-        out.append(statement)
+        parts.append(statement)
         last = m.end()
-        nums = [int(x) for x in re.findall(r'\[(\d{1,3})\]', m.group(0))]
-        nums = [n for n in nums if 1 <= n <= total]
+        nums = [n for n in (int(x) for x in re.findall(r'\[(\d{1,3})\]', m.group(0))) if 1 <= n <= total]
         if not nums:
             continue  # points at a source that does not exist
         if any(n > docs for n in nums):
-            out.append(' ' + ''.join(f'[{n}]' for n in dict.fromkeys(nums)))  # web sources: not verifiable here
+            parts.append(' ' + ''.join(f'[{n}]' for n in dict.fromkeys(nums)))  # web sources: not verifiable here
             continue
         # the statement is the text since the previous marker group, limited to the current sentence
         claim = re.split(r'(?<=[.!?。])\s+|\n', statement)[-1].strip()
         if len(NOISE.sub('', claim)) < 6:
-            out.append(' ' + ''.join(f'[{n}]' for n in dict.fromkeys(nums)))
+            parts.append(' ' + ''.join(f'[{n}]' for n in dict.fromkeys(nums)))
             continue
-        scores = [score(claim, p) for p in passages]
-        best = max(scores)
-        if best < FLOOR:
-            continue  # nothing supports it: do not cite
-        keep = [i + 1 for i, s in sorted(enumerate(scores), key=lambda t: -t[1]) if s >= max(FLOOR, best * RELATIVE)][:2]
-        keep.sort()
-        out.append(' ' + ''.join(f'[{n}]' for n in keep))
-    out.append(answer[last:])
+        parts.append(('judge', len(claims), claim))
+        claims.append(claim)
+    tail = answer[last:]
+    verdicts = judge(claims) if judge and claims else None
+    if verdicts is not None and len(verdicts) != len(claims):
+        verdicts = None
+    out = []
+    for part in parts:
+        if isinstance(part, str):
+            out.append(part)
+            continue
+        _, index, claim = part
+        if verdicts is not None:
+            keep = [n for n in verdicts[index] if 1 <= n <= docs]
+        else:
+            scores = [score(claim, p) for p in passages]
+            best = max(scores)
+            keep = [i + 1 for i, s in sorted(enumerate(scores), key=lambda t: -t[1]) if best >= FLOOR and s >= max(FLOOR, best * RELATIVE)][:2]
+        if keep:  # nothing supports it: do not cite
+            out.append(' ' + ''.join(f'[{n}]' for n in sorted(keep)))
+    out.append(tail)
     return re.sub(r' {2,}', ' ', ''.join(out))

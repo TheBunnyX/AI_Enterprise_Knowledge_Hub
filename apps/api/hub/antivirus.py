@@ -11,7 +11,8 @@ CACHE_SECONDS=5.
 _cache={'at':0.,'value':True}
 
 def enabled():
-    """False only when an admin switched scanning off."""
+    """False when CLAMAV_ENABLED is 0/false in .env (master switch) or an admin switched scanning off."""
+    if os.getenv('CLAMAV_ENABLED','1').strip().lower() in ('0','false','no','off'):return False
     if time.monotonic()-_cache['at']<CACHE_SECONDS:return _cache['value']
     value=_cache['value']
     try:

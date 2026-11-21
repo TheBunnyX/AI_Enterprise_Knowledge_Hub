@@ -1,51 +1,63 @@
-# การเชื่อมต่อโมเดล
+# Model connections
 
-## Gateway และ API key
+## Gateway and API keys
 
-ตั้งค่าได้ใน Super Admin → โมเดลและบริการ AI URL ต้องเป็น API base ที่ API/worker เข้าถึงได้ (รวม `/v1` ตาม Gateway) API key ถูกเข้ารหัสในฐานข้อมูลด้วย `SECRETS_KEY` และไม่ส่งกลับเบราว์เซอร์ คีย์เข้ารหัสอยู่ใน `.env` ที่ถูกละเว้นจาก Git ต้องเก็บและสำรองอย่างปลอดภัย หากเปลี่ยนโดยไม่ย้ายข้อมูล key เก่าจะถอดรหัสไม่ได้
+Configure them in Super Admin → AI models and services. The URL must be an API base reachable from the API and the worker (including `/v1` for a gateway). API keys are encrypted in the database with `SECRETS_KEY` and never sent back to the browser. The encryption key lives in `.env`, which Git ignores; store and back it up safely. If it changes without migrating the data, the old keys cannot be decrypted.
 
-ใช้ปุ่มทดสอบการเชื่อมต่อเพื่อเรียก `/models` แล้วเพิ่ม alias ที่มีจริงในหมวด LLM/Image/Video/STT/TTS/Embedding/Reranker ก่อนเปิดใช้งาน ไม่ seed ชื่อโมเดลสมมติ ราคา input/output เป็น USD ต่อ 1M tokens ที่ผู้ดูแลกำหนด
+Use the connection test button to call `/models`, then add the aliases that really exist under LLM / Image / Video / STT / TTS / Embedding / Reranker before enabling them. No imaginary model names are seeded. Input and output prices are USD per 1M tokens, set by the administrator.
 
-การสร้าง Site ครั้งนี้ไม่ได้ตั้งค่า Gateway ภายนอกหรือเรียก paid APIs ผู้ใช้ต้องระบุ key และเลือกโมเดลจริงก่อนใช้งาน
+This site was created without an external gateway and without calling any paid API. You must supply a key and choose real models before use.
 
 ## LLM
 
-เรียก `/chat/completions` แบบ `stream: true` อ่าน SSE แบบ incremental และบันทึก usage ที่ upstream รายงาน โมเดลต้องได้รับอนุญาตตาม tenant policy หากไม่กำหนดจะใช้โมเดลที่เปิดใช้งาน โมเดลสำรองลองได้หนึ่งโมเดล LLM ที่องค์กรอนุญาตเมื่อ primary ล้มเหลวก่อนส่งข้อความ ไม่สลับหลังเริ่มตอบ
+The system calls `/chat/completions` with `stream: true`, reads SSE incrementally and records the usage the upstream reports. A model must be allowed by the organisation's model policy; if none is set, the enabled models are used. A fallback model may try one permitted LLM when the primary fails before any text is sent; it never switches after the answer has started.
 
-แชทใช้ข้อความล่าสุดไม่เกิน 8 ข้อความ และ context ที่ค้นได้ในคลังที่ผู้ใช้มีสิทธิ์ ไม่มีหลักฐานจะไม่เรียกโมเดลและไม่สร้างแหล่งอ้างอิงสมมติ `extractive-demo` คือข้อความจากเอกสารที่มีป้ายกำกับ ไม่ใช่คำตอบ paid LLM
+Chat uses at most the latest 8 messages plus the context retrieved from knowledge bases the user may read. With no evidence the model is not called and no sources are invented. `extractive-demo` returns labelled text from the documents; it is not a paid LLM answer.
 
 ## Media
 
-- Image: `POST /images/generations` รองรับ `b64_json` หรือ HTTPS URL จาก host ที่อนุญาตใน `MEDIA_DOWNLOAD_HOSTS` ไม่มีการตาม redirect และไม่ส่ง Gateway key ไป host รูปภาพ
-- STT: `POST /audio/transcriptions` ส่ง multipart file สูงสุด 20 MB
-- TTS: `POST /audio/speech` ใช้ voice ID ที่โมเดลรองรับ ผลลัพธ์ MP3
-- Video: `POST /videos` → `GET /videos/{id}` → `GET /videos/{id}/content` ความยาว/ขนาดต้องรองรับตาม provider
+- Image: `POST /images/generations`, supporting `b64_json` or an HTTPS URL from a host allowed in `MEDIA_DOWNLOAD_HOSTS`. Redirects are not followed and the gateway key is never sent to the image host.
+- STT: `POST /audio/transcriptions`, sending a multipart file up to 20 MB.
+- TTS: `POST /audio/speech`, using a voice ID the model supports; the result is MP3.
+- Video: `POST /videos` → `GET /videos/{id}` → `GET /videos/{id}/content`; length and size must be supported by the provider.
 
-งานบันทึกใน PostgreSQL ประมวลผลด้วย Celery และเก็บผลใน SeaweedFS Preview/download ตรวจทั้ง tenant และเจ้าของงาน ค่าใช้จ่ายใช้ `x-litellm-response-cost` ถ้ามี มิฉะนั้นแสดงว่ายังไม่ทราบราคา ไม่สร้างผลลัพธ์จำลองแทนผู้ให้บริการ
+Jobs are stored in PostgreSQL, processed by Celery and their results kept in SeaweedFS. Preview and download check both the organisation and the job owner. Cost uses `x-litellm-response-cost` when present; otherwise the price is shown as unknown. No simulated result replaces the provider.
 
-## หลายผู้ให้บริการ (Google AI, OpenRouter)
+## Several providers (Google AI, OpenRouter)
 
-หน้า "โมเดลและบริการ AI" มีส่วน "ผู้ให้บริการโมเดล" ให้ใส่ API key แยกรายผู้ให้บริการ (เข้ารหัสด้วย `SECRETS_KEY`, ไม่ส่งกลับ) `Google AI` ใช้ endpoint OpenAI-compatible `https://generativelanguage.googleapis.com/v1beta/openai` และ `OpenRouter` ใช้ `https://openrouter.ai/api/v1` โมเดลจะเรียกผ่านผู้ให้บริการที่ตรงกับช่อง "ผู้ให้บริการ" ของโมเดล หากไม่มี key ของรายนั้นจะใช้ Gateway หลัก
+The "AI models and services" page has a "Model providers" section for one API key per provider (encrypted with `SECRETS_KEY`, never returned). `Google AI` uses the OpenAI-compatible endpoint `https://generativelanguage.googleapis.com/v1beta/openai` and `OpenRouter` uses `https://openrouter.ai/api/v1`. A model is called through the provider named in its "Provider" field; if that provider has no key, the main gateway is used.
 
-โมเดลสำรองจะเลือกโมเดลชื่อเดียวกันจากผู้ให้บริการอื่นก่อน แล้วจึงเลือกตัวที่ราคาถูกที่สุด เช่น Gemini 3.5 Flash Lite บน Google AI (`gemini-3.5-flash-lite`) สำรองด้วยตัวเดียวกันบน OpenRouter ใช้ปุ่ม "ทดสอบ" เพื่อดูรหัสโมเดลที่ผู้ให้บริการมีจริงก่อนเปิดใช้ รหัส `gemini-3.1-flash-lite` และรหัสบน OpenRouter (`google/...`) ยังไม่ได้ยืนยันกับผู้ให้บริการ ระบบไม่จำกัด RPM/RPD ฝั่งเรา โควตาฟรีของ Google (เช่น 15 RPM / 500 RPD) จึงอาศัยโมเดลสำรองเมื่อได้ 429
+A fallback prefers the model with the same name at another provider, then the cheapest one. For example, Gemini 3.5 Flash Lite on Google AI (`gemini-3.5-flash-lite`) falls back to the same model on OpenRouter. Use the "Test" button to see the model IDs the provider really offers before enabling them. The ID `gemini-3.1-flash-lite` and the OpenRouter IDs (`google/...`) have not been confirmed with the providers. There is no RPM/RPD limit on our side, so Google's free quota (for example 15 RPM / 500 RPD) relies on the fallback model after an HTTP 429.
 
-## LLM ในเครื่อง (Qwen 3.5 2B)
+## Local LLM (Qwen 3.5 2B)
 
-บริการ `llm-local` (llama.cpp, CPU, profile `llm-local` — ตั้ง `COMPOSE_PROFILES=llm-local` ใน `.env`) โหลด `Qwen3.5-2B-Q4_K_M.gguf` จาก `unsloth/Qwen3.5-2B-GGUF` (~1.3 GB) ครั้งแรกลง volume `gguf` เปิดโหมดไม่คิดยาว (`--reasoning-budget 0`) ปรับด้วย `LLM_LOCAL_THREADS` / `LLM_LOCAL_CONTEXT` (ค่าปริยาย 4 / 8192) ผู้ให้บริการ `Local LLM` ไม่ต้องใช้ API key (URL จาก `LOCAL_LLM_URL`) เพิ่มโมเดลด้วย model ID `qwen3.5-2b` แล้วอนุญาตในนโยบายโมเดลขององค์กร
+The `llm-local` service (llama.cpp, CPU, profile `llm-local` — set `COMPOSE_PROFILES=llm-local` in `.env`) downloads `Qwen3.5-2B-Q4_K_M.gguf` from `unsloth/Qwen3.5-2B-GGUF` (about 1.3 GB) into the `gguf` volume on first start. Long thinking is off (`--reasoning-budget 0`). Tune it with `LLM_LOCAL_THREADS` / `LLM_LOCAL_CONTEXT` (defaults 4 / 8192). The `Local LLM` provider needs no API key (URL from `LOCAL_LLM_URL`). Add a model with model ID `qwen3.5-2b` and allow it in the organisation's model policy. Local models cannot be used in Agent mode, which requires tool calling.
 
-## Learned embeddings / reranking
+## Gemini Decision 1 (optional)
 
-ค่าปริยายใช้ hash embedding CPU 256 dimensions ใน `hub_hash_ngram_v1_256` หากต้องการ learned model ให้ตั้ง `EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS`, `EMBEDDING_VERSION` และตั้ง Gateway ก่อน recreate API/worker แล้ว reindex เอกสาร ระบบใช้ `/embeddings` ครั้งละสูงสุด 32 ข้อความและตรวจ dimensions/finite values สร้างชื่อ collection จาก fingerprint ของ model/dimensions/version ไม่ผสม embedding spaces
+`gemini-decision-1` is not a chat model: it answers typed yes/no, choice and score questions with calibrated probabilities through the Decisions API (`POST /v1beta/decisions`), so it is not added in the model list. Set `DECISIONS_ENABLED=true` with a Google AI key (`GOOGLE_AI_API_KEY`) and it is used in three places:
 
-### โมเดลในเครื่อง (ONNX, CPU)
+1. **Relevance gate**: before answering, it judges whether the retrieved passages answer the question; below `DECISIONS_RELEVANCE_MIN` (0.25) the chat replies "no evidence found" instead of letting a small model summarise unrelated text.
+2. **Citation check**: one batched call tells which passage supports each cited statement; otherwise the local n-gram check is used.
+3. **Library suggestion**: `GET /api/documents/{id}/suggest-library` returns the best knowledge base the user may write to (no screen uses it yet).
 
-- `EMBEDDING_MODEL=local:multilingual-e5-small` — 384 มิติ ใช้คำนำหน้า `query: `/`passage: ` เกณฑ์ cosine ขั้นต่ำ `EMBEDDING_MIN_SCORE` (0.80) เปลี่ยนโมเดลแล้วต้อง reindex
-- `RERANK_MODEL=local:bge-reranker-v2-m3` — ONNX INT8 571 MB ตัดผลที่คะแนนต่ำกว่า `RERANK_MIN_SCORE` (0..1, 0 = ไม่ตัด) ค่าแนะนำ `0.01` จากการวัดด้วย `make eval` (คำถามนอกขอบเขตได้ไม่เกิน 0.003 ส่วนค่า 0.1 ทำให้ตัดคำตอบที่ถูกทิ้งราว 9%)
-- โมเดลดาวน์โหลดจาก HuggingFace ครั้งแรกลง `DATA_DIR/models` (volume `api-data`) ปรับเธรดด้วย `ONNX_THREADS`, ขนาดแบตช์ด้วย `ONNX_BATCH_SIZE` / `ONNX_RERANK_BATCH_SIZE`
-- OCR ใช้ PaddleOCR PP-OCRv5 ภาษาไทย (`OCR_LANGUAGES`)
+Choose the model with `DECISIONS_MODEL`: `gemini-decision-1` (Google AI key) or, through OpenRouter's alpha Decisions API (`OPENROUTER_API_KEY`), `typesafe/jev-1.14`, `typesafe/jev-1.13` or `perplexity/pplx-decider-v1.2`. An id with a `/` goes to OpenRouter. The OpenRouter dialect was written from its documentation and has not been tried against the live service. Calibration differs between models, so check `DECISIONS_RELEVANCE_MIN` with real questions after switching.
 
-ตั้ง `RERANK_MODEL` เพื่อเรียก `/rerank` หลังรวม BM25 และ dense rankings ตรวจ index ของผลลัพธ์ก่อนนำมาใช้งาน ไม่มีการให้ reranker ขยายสิทธิ์เข้าถึงเอกสาร
+If the service is off, slow (`DECISIONS_TIMEOUT`, 12 s) or fails, the local method is used and Decision 1 is skipped for two minutes. Questions and passages are sent to Google AI while it is on.
 
-## การยืนยันผล
+## Learned embeddings and reranking
 
-Adapters ของ LLM/media/embedding/reranker ผ่าน automated mocked-provider tests การยืนยันกับโมเดลจริงและคุณภาพภาษาไทยต้องทำหลังมี credentials ดู verification.md และ feature-status.md
+The default is a 256-dimension CPU hash embedding in `hub_hash_ngram_v1_256`. For a learned model, set `EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS` and `EMBEDDING_VERSION` and configure the gateway, then recreate the API and worker and reindex the documents. The system calls `/embeddings` with at most 32 texts at a time, validates dimensions and finite values, and derives the collection name from a fingerprint of model, dimensions and version so embedding spaces are never mixed.
+
+### Local models (ONNX, CPU)
+
+- `EMBEDDING_MODEL=local:multilingual-e5-small` — 384 dimensions, uses the `query: ` / `passage: ` prefixes, with a minimum cosine threshold `EMBEDDING_MIN_SCORE` (0.80). Reindex after changing the model.
+- `RERANK_MODEL=local:bge-reranker-v2-m3` — ONNX INT8, 571 MB. Results scoring below `RERANK_MIN_SCORE` (0..1, 0 = keep all) are dropped. A value of `0.01` is recommended from `make eval` measurements (out-of-scope questions score at most 0.003, while 0.1 would discard about 9% of correct answers).
+- Models download from HuggingFace on first use into `DATA_DIR/models` (the `api-data` volume). Tune threads with `ONNX_THREADS` and batch sizes with `ONNX_BATCH_SIZE` / `ONNX_RERANK_BATCH_SIZE`.
+- OCR uses PaddleOCR PP-OCRv5 for Thai (`OCR_LANGUAGES`).
+
+Set `RERANK_MODEL` to call `/rerank` after merging the BM25 and dense rankings. The result indexes are validated before use, and the reranker never widens document access.
+
+## Verification
+
+The LLM, media, embedding and reranker adapters pass automated mocked-provider tests. Verification with real models and the quality of Thai answers must be done once credentials exist. See verification.md and feature-status.md.

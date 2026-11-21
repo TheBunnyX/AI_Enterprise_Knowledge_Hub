@@ -32,7 +32,7 @@ class UserInput(BaseModel):
     name: str = Field(min_length=1,max_length=100)
     name_en: str = Field('',max_length=100)
     email: str = Field(pattern=r'^[^\s@]+@[^\s@]+\.[^\s@]+$',max_length=254)
-    tenant_id: str
+    tenant_id: str = ''
     role: Literal['SUPER_ADMIN','DEPARTMENT_ADMIN','USER'] = 'USER'
     password: str = Field(min_length=12,max_length=200)
     department_id: str | None = None

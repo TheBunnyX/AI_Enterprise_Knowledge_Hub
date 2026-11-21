@@ -16,6 +16,7 @@ _client = None
 
 
 def enabled():
+    if os.getenv('LANGFUSE_ENABLED', 'true').strip().lower() in ('false', '0', 'no', 'off'): return False  # master switch in .env
     return bool(os.getenv('LANGFUSE_PUBLIC_KEY') and os.getenv('LANGFUSE_SECRET_KEY') and os.getenv('LANGFUSE_HOST'))
 
 

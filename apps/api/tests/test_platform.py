@@ -70,19 +70,25 @@ def test_no_evidence_does_not_invent_sources(member):
     meta=json.loads(r.text.splitlines()[0]);assert meta['citations']==[]
     assert 'No relevant evidence was found' in ''.join(json.loads(l).get('text','') for l in r.text.splitlines())  # an English question gets an English reply
 
-def test_org_management_and_quota(admin):
-    org=admin.post('/api/admin/organizations',json={'name':'Test tenant','quota':0}).json()
-    assert org['id'] in [o['id'] for o in admin.get('/api/admin/organizations').json()]
+def test_single_organization_and_quota(admin):
+    assert admin.post('/api/admin/organizations',json={'name':'Second','quota':0}).status_code==405  # one organization only
+    orgs=admin.get('/api/admin/organizations').json();assert len(orgs)==1
     from hub.database import SessionLocal
+    from hub.models import Organization
     from hub.ops_models import Group
+    tenant=orgs[0]['id'];old=orgs[0]['quota']
     with SessionLocal() as db:
-        g=Group(tenant_id=org['id'],name='ฝ่ายทดสอบ',kind='department');db.add(g);db.commit();gid=g.id
-    body={'name':'Quota user','email':'quota@example.test','tenant_id':org['id'],'password':'long-enough-password','role':'USER'}
-    assert admin.post('/api/admin/users',json=body).status_code==422
-    r=admin.post('/api/admin/users',json={**body,'department_id':gid})
-    assert r.status_code==201
-    admin.post('/api/auth/login',json={'email':'quota@example.test','password':'long-enough-password'})
-    assert admin.post('/api/chat',json={'question':'hello'}).status_code==429
+        g=Group(tenant_id=tenant,name='ฝ่ายทดสอบ',kind='department');db.add(g);db.commit();gid=g.id
+        db.get(Organization,tenant).quota=0;db.commit()
+    body={'name':'Quota user','email':'quota@example.test','tenant_id':'ignored-other-org','password':'long-enough-password','role':'USER'}
+    try:
+        assert admin.post('/api/admin/users',json=body).status_code==422
+        assert admin.post('/api/admin/users',json={**body,'department_id':gid}).status_code==201  # tenant_id from the body is ignored
+        admin.post('/api/auth/login',json={'email':'quota@example.test','password':'long-enough-password'})
+        assert admin.post('/api/chat',json={'question':'hello'}).status_code==429
+    finally:
+        with SessionLocal() as db:
+            db.get(Organization,tenant).quota=old;db.commit()
 
 def login_as(client,email):
     from hub.database import DATA

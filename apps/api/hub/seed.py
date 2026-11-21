@@ -55,13 +55,28 @@ def ensure_sample_skills(db):
     from .sample_skills import ensure
     return ensure(db)
 
+def sync_demo_passwords(db):
+    """Keep the sign-in buttons honest: each DEMO_ACCOUNTS password is applied to its (sample-data) user, so a changed or restored database still matches them."""
+    if os.getenv('APP_ENV')=='production':return 0
+    changed=0
+    for entry in os.getenv('DEMO_ACCOUNTS','').split(';'):
+        if entry.count('|')!=2:continue
+        _,email,password=entry.split('|')
+        user=db.scalar(select(User).where(User.email==email))
+        if user and password:
+            try:same=passwords.verify(password,user.password_hash)
+            except Exception:same=False
+            if not same:user.password_hash=passwords.hash(password);changed+=1
+    if changed:db.commit()
+    return changed
+
 def seed():
     if os.getenv('SEED_SAMPLE_DATA','false').lower()!='true': return  # production data is created by hub.bootstrap, never seeded
     ids=[]
     with SessionLocal() as db:
         existing=db.scalar(select(Organization).order_by(Organization.created_at).limit(1))
         if existing:
-            ensure_department_demo(db); ensure_sample_skills(db); ids=ensure_real_documents(db,existing.id)
+            sync_demo_passwords(db); ensure_department_demo(db); ensure_sample_skills(db); ids=ensure_real_documents(db,existing.id)
             for i in ids: ingest(i)
             return
         org=Organization(name='องค์กรสาธิต AI Knowledge Hub',plan='Enterprise'); db.add(org); db.flush()

@@ -60,12 +60,12 @@ export function AdminOverview() {
 
   return <>
     <div className="page-heading">
-      <div><h1>{tr('สวัสดีครับ, Super Admin 👋')}</h1><p>{tr('ภาพรวม AI Knowledge Hub และการใช้งานของทุกองค์กร')}</p></div>
+      <div><h1>{tr('สวัสดีครับ, Super Admin 👋')}</h1><p>{tr('ภาพรวม AI Knowledge Hub และการใช้งานของระบบ')}</p></div>
       <DaysSelect value={days} onChange={setDays} />
     </div>
 
     <div className="stats-grid" data-testid="overview-stats">
-      <Stat icon={Building2} title={tr('องค์กรทั้งหมด')} value={fmt(a?.organizations)} note={tr('{v1} ผู้ใช้งาน', { v1: fmt(a?.users) })} />
+      <Stat icon={Building2} title={tr('ผู้ใช้งาน')} value={fmt(a?.users)} note={tr('{v1} ผู้ใช้งาน', { v1: fmt(a?.users) })} />
       <Stat icon={FileText} title={tr('เอกสารในระบบ')} value={fmt(a?.documents)} note={tr('พื้นที่ {v1}', { v1: bytes(a?.storage_bytes) })} tone="text-violet-600 bg-violet-500/10" />
       <Stat icon={Library} title={tr('คลังความรู้')} value={fmt(a?.knowledge_bases)} note={tr('{v1} บทสนทนา · {v2} ข้อความ', { v1: fmt(a?.conversations), v2: fmt(a?.messages) })} tone="text-teal-600 bg-teal-500/10" />
       <Stat icon={ShieldCheck} title={tr('บริการที่ทำงานปกติ')} value={health.data ? `${used.length - down}/${used.length}` : '—'} note={health.isError ? tr('ตรวจสอบไม่ได้') : down ? tr('ขัดข้อง {down} บริการ', { down }) : tr('ปกติทั้งหมด')} tone={down ? 'text-red-600 bg-red-500/10' : 'text-emerald-600 bg-emerald-500/10'} />
@@ -95,13 +95,6 @@ export function AdminOverview() {
       </CardContent>
     </Card>
 
-    <Card>
-      <CardHeader className="flex-row items-center justify-between"><div><CardTitle>{tr('องค์กรในระบบ')}</CardTitle><CardDescription>{tr('{v1} องค์กร', { v1: fmt(orgs.data?.length) })}</CardDescription></div><Button asChild variant="ghost" size="sm"><Link href="/super-admin/organizations">{tr('จัดการองค์กร')}<ArrowRight className="size-4" /></Link></Button></CardHeader>
-      <CardContent>
-        <Table><TableHeader><TableRow><TableHead>{tr('องค์กร')}</TableHead><TableHead className="text-right">{tr('ผู้ใช้')}</TableHead><TableHead className="text-right">{tr('เอกสาร')}</TableHead><TableHead>{tr('สถานะ')}</TableHead></TableRow></TableHeader>
-          <TableBody>{orgs.data?.slice(0, 8).map((o) => <TableRow key={o.id}><TableCell className="font-medium">{o.name}</TableCell><TableCell className="text-right">{fmt(o.users)}</TableCell><TableCell className="text-right">{fmt(o.documents)}</TableCell><TableCell><Badge variant={o.status === 'active' ? 'secondary' : 'outline'}>{o.status === 'active' ? tr('ใช้งาน') : o.status}</Badge></TableCell></TableRow>)}</TableBody></Table>
-      </CardContent>
-    </Card>
   </>;
 }
 
@@ -122,7 +115,6 @@ export function AdminBilling() {
     <div className="page-heading">
       <div><h1>{tr('การใช้งานและค่าใช้จ่าย')}</h1><p>{tr('ค่าใช้จ่าย AI แยกตามช่วงเวลา โมเดล องค์กร และผู้ใช้ ตามที่บันทึกจากระบบจริง')}</p></div>
       <div className="flex flex-wrap items-center gap-2">
-        <Sel aria-label={tr('เลือกองค์กร')} value={tenant} onChange={(e) => setTenant(e.target.value)} className="w-52"><option value="">{tr('ทุกองค์กร')}</option>{orgs.data?.map((o) => <option value={o.id} key={o.id}>{o.name}</option>)}</Sel>
         <DaysSelect value={days} onChange={setDays} />
         <Button asChild variant="outline"><a href={`/api/usage/export?days=${days}${tenant ? '&tenant_id=' + tenant : ''}`}><Download className="size-4" />{tr('ส่งออก CSV')}</a></Button>
       </div>

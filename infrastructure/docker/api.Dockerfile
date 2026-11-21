@@ -13,4 +13,4 @@ WORKDIR /srv
 COPY --chown=app:app apps/api/ ./
 USER app
 EXPOSE 8000
-CMD ["sh","-ec","python -m hub.bootstrap && alembic upgrade head && python -m hub.seed_restore && alembic upgrade head && python -m hub.rls && exec uvicorn hub.main:app --host 0.0.0.0 --port 8000 --timeout-keep-alive 75"]
+CMD ["sh","-ec","python -m hub.bootstrap && alembic upgrade head && python -m hub.seed_restore && alembic upgrade head && python -m hub.rls && python -m hub.terms && exec uvicorn hub.main:app --host 0.0.0.0 --port 8000 --timeout-keep-alive 75"]

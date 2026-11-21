@@ -87,11 +87,20 @@ def qdrant():
     return QdrantClient(url=os.environ['QDRANT_URL'])
 
 _indexed=set()
+def quantization():
+    """int8 scalar quantization kept in RAM: about a quarter of the vector memory; Qdrant re-scores the best hits with the full vectors."""
+    from qdrant_client import models
+    if os.getenv('QDRANT_QUANTIZE','true').lower()!='true': return None
+    return models.ScalarQuantization(scalar=models.ScalarQuantizationConfig(type=models.ScalarType.INT8,quantile=0.99,always_ram=True))
+
 def ensure_collection(client):
     """Create the collection if needed and index the payload fields every search filters on (tenant, document)."""
     from qdrant_client import models
-    if not client.collection_exists(COLLECTION): client.create_collection(COLLECTION, vectors_config=models.VectorParams(size=embeddings.specification()['dimensions'],distance=models.Distance.COSINE))
+    if not client.collection_exists(COLLECTION): client.create_collection(COLLECTION, vectors_config=models.VectorParams(size=embeddings.specification()['dimensions'],quantization_config=quantization(),distance=models.Distance.COSINE))
     if COLLECTION in _indexed: return
+    if os.getenv('QDRANT_QUANTIZE','true').lower()=='true':
+        try: client.update_collection(COLLECTION,quantization_config=quantization())  # existing collections get it too (idempotent)
+        except Exception: pass  # an unquantized collection still searches, only with more RAM
     import warnings
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
@@ -127,7 +136,7 @@ def ingest(document_id,raise_errors=False):
                     if old:storage.remove(old)
                 except Exception: pass  # an orphaned picture file is harmless
             db.execute(delete(Chunk).where(Chunk.document_id==d.id))
-            db.add_all(chunks); db.flush()
+            db.add_all(chunks); db.flush(); term_index.build(db,chunks,d.name)
             if os.getenv('QDRANT_URL'):
                 from qdrant_client import models
                 client=qdrant(); ensure_collection(client)
@@ -173,6 +182,7 @@ def picture_hits(db,tenant_id,query,docs):
     hits=[(sum(a*b for a,b in zip(qv,r.mm_embedding)),r.id) for r in db.execute(stmt) if r.document_id in docs and r.mm_embedding and len(r.mm_embedding)==len(qv)]
     return sorted(hits,key=lambda x:x[0],reverse=True)[:20]
 
+from . import terms as term_index  # noqa: E402
 IN_LIMIT=500  # above this many documents the scope is checked in Python instead of a long SQL IN list
 
 CROSS_POOL=int(os.getenv('CROSS_LANGUAGE_POOL','20'))  # candidates the reranker sees for a question without Thai letters
@@ -211,7 +221,15 @@ def search(db, tenant_id, query, kb_id=None, document_ids=None, mode='hybrid', l
     qv=embeddings.batch([query],tenant_id,'query')[0] if use_dense else None
     scope=[Chunk.tenant_id==tenant_id,Chunk.embedding_version==spec['version']]
     chunks={}; kinds={}; sparse=[]; dense=[]; pictures=[]  # chunks: id -> (document_id, page, text); kinds: id -> 'text' | 'image'
-    if docs and (use_sparse or not vector_store):
+    indexed=None  # BM25 from the PostgreSQL term index: (scored chunks, chunk count), when the corpus is big enough and the index is built
+    if docs and use_sparse and (vector_store or not use_dense):
+        indexed=term_index.scores(db,tenant_id,spec['version'],docs,list(dict.fromkeys(lexical_tokens(query))))
+        if indexed:
+            sparse,indexed_count=indexed
+            have=[i for _,i in sparse]
+            for row in db.execute(select(Chunk.id,Chunk.document_id,Chunk.page,Chunk.text,Chunk.kind).where(*scope,Chunk.id.in_(have))) if have else []:
+                chunks[row.id]=(row.document_id,row.page,row.text); kinds[row.id]=row.kind
+    if docs and not indexed and (use_sparse or not vector_store):
         local_dense=use_dense and not vector_store
         stmt=select(Chunk.id,Chunk.document_id,Chunk.page,Chunk.text,Chunk.kind,*([Chunk.embedding] if local_dense else [])).where(*scope)
         if len(docs)<=IN_LIMIT: stmt=stmt.where(Chunk.document_id.in_(list(docs)))
@@ -233,7 +251,7 @@ def search(db, tenant_id, query, kb_id=None, document_ids=None, mode='hybrid', l
                 n=tf[t]
                 if n: score+=math.log(1+(count-frequency[t]+.5)/(frequency[t]+.5))*(n*2.2)/(n+1.2*(.25+.75*length/average))
             sparse.append((score,id))
-    if vector_store and docs and (chunks or not use_sparse):
+    if vector_store and docs and (chunks or indexed or not use_sparse):
         from qdrant_client import models
         client=qdrant()
         if chunks or client.collection_exists(COLLECTION):

@@ -127,6 +127,19 @@ def preview(id:str,version:int|None=None,u:User=Depends(current_user),db:Session
     chunks=db.scalars(select(Chunk).where(Chunk.document_id==d.id,Chunk.tenant_id==u.tenant_id).order_by(Chunk.page,Chunk.created_at)).all()
     return {**serialize(d,'id name status error version'),'download_url':f'/api/documents/{id}/download','pages':[serialize(c,'id page text') for c in chunks]}
 
+@router.get('/documents/{id}/suggest-library')
+def suggest_library(id:str,u:User=Depends(current_user),db:Session=Depends(db_session)):
+    """Which of the knowledge bases the user may write to fits this document best (Gemini Decision 1; {'suggestion':null} when it is off or unsure)."""
+    from . import decisions
+    d=tenant_doc(db,u,id)
+    bases=db.scalars(select(KnowledgeBase).where(KnowledgeBase.tenant_id==u.tenant_id,KnowledgeBase.id.in_(visible_kbs(db,u,True)))).all()
+    if not decisions.enabled() or len(bases)<2:return {'suggestion':None,'current':d.knowledge_base_id}
+    text=' '.join(db.scalars(select(Chunk.text).where(Chunk.document_id==d.id,Chunk.tenant_id==u.tenant_id).order_by(Chunk.page,Chunk.created_at).limit(6)))
+    found=decisions.suggest_library(d.name+chr(10)+text,{b.id:(b.name+(': '+b.description if b.description else '')) for b in bases})
+    if not found or found[1]<float(os.getenv('DECISIONS_SUGGEST_MIN','0.6')):return {'suggestion':None,'current':d.knowledge_base_id}
+    kb=next(b for b in bases if b.id==found[0])
+    return {'suggestion':{'id':kb.id,'name':kb.name,'confidence':round(found[1],3)},'current':d.knowledge_base_id}
+
 @router.get('/documents/{id}/download')
 def download(id:str,u:User=Depends(current_user),db:Session=Depends(db_session)):
     from urllib.parse import quote
@@ -301,15 +314,11 @@ def organizations(u:User=Depends(admin),db:Session=Depends(db_session)):
     audit(db,u,'ดูรายการองค์กรทั้งหมด')
     return [{**serialize(o,'id name status quota created_at'),'users':db.scalar(select(func.count()).select_from(User).where(User.tenant_id==o.id)),'documents':db.scalar(select(func.count()).select_from(Document).where(Document.tenant_id==o.id)),'cost':db.scalar(select(func.coalesce(func.sum(Usage.cost),0)).where(Usage.tenant_id==o.id))} for o in db.scalars(select(Organization).order_by(Organization.created_at))]
 
-@router.post('/admin/organizations',status_code=201)
-def create_org(body:OrgInput,u:User=Depends(admin),db:Session=Depends(db_session)):
-    o=Organization(**body.model_dump()); db.add(o); db.commit(); audit(db,u,'สร้างองค์กร',o.name); return {'id':o.id}
-
 @router.put('/admin/organizations/{id}')
 def update_org(id:str,body:OrgInput,u:User=Depends(admin),db:Session=Depends(db_session)):
     o=db.get(Organization,id)
-    if not o: raise HTTPException(404)
-    if o.id==u.tenant_id and body.status!='active': raise HTTPException(400,'ไม่สามารถระงับองค์กรที่กำลังใช้งานได้')
+    if not o or o.id!=u.tenant_id: raise HTTPException(404)
+    if body.status!='active': raise HTTPException(400,'ไม่สามารถระงับองค์กรที่กำลังใช้งานได้')
     for k,v in body.model_dump().items(): setattr(o,k,v)
     db.commit(); audit(db,u,'แก้ไของค์กร',o.name); return {'ok':True}
 
@@ -319,7 +328,7 @@ def users(u:User=Depends(admin),db:Session=Depends(db_session)):
 
 @router.post('/admin/users',status_code=201)
 def create_user(body:UserInput,u:User=Depends(admin),db:Session=Depends(db_session)):
-    if not db.get(Organization,body.tenant_id): raise HTTPException(404,'ไม่พบองค์กร')
+    body.tenant_id=u.tenant_id  # single organization: always the administrator's own
     if db.scalar(select(User).where(User.email==body.email.lower())): raise HTTPException(409,'อีเมลนี้มีอยู่แล้ว')
     values=body.model_dump(exclude={'password','department_id'}); values['email']=body.email.lower()
     if body.role!='SUPER_ADMIN':

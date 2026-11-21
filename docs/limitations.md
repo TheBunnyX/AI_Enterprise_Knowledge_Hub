@@ -1,24 +1,25 @@
-# ข้อจำกัดปัจจุบัน
+# Current limitations
 
-ฟีเจอร์หลักเพิ่มแล้วตาม [สถานะล่าสุด](feature-status.md) แต่ยังไม่ใช่การรับรองพร้อมใช้งาน Production ทุกข้อของ Master Prompt
+The main features are in place (see [feature status](feature-status.md)), but this is not a certification that every production requirement of the master prompt is met.
 
-- มี ACL รายผู้ใช้/แผนก/กลุ่ม/เอกสารใน API และ PostgreSQL row-level security แยกองค์กรแล้ว (ผู้ใช้/ผู้ดูแลแผนก) แต่ Super Admin และงานเบื้องหลังข้าม policy ได้ เพราะต้องทำงานข้ามองค์กร และ RLS ยังไม่แยกตามผู้ใช้/แผนกภายในองค์กร (ใช้ ACL ใน API)
-- Docker สแกน ClamAV ก่อนอ่านหรือเก็บไฟล์ และปิดรับไฟล์เมื่อ scanner ล่ม ยังไม่มี parser sandbox isolation หรือ DLP
-- LLM streaming/fallback, embeddings, reranker และสื่อทั้งสี่หมวดมี adapters แต่ยังไม่มี paid provider credentials สำหรับทดสอบจริง รองรับหลายผู้ให้บริการ (Google AI, OpenRouter, LiteLLM) แต่ละรายมี API key ของตัวเอง ยังไม่ได้ทดสอบกับ key จริง และไม่มีตัวจำกัด RPM/RPD ฝั่งเรา (พึ่งโมเดลสำรองเมื่อโดน 429)
-- งบประมาณใช้ reported tokens/ราคาที่ผู้ดูแลกำหนด และราคา media ที่ upstream แจ้ง ค่าใช้จ่ายสื่อที่ไม่ทราบไม่ถูกนับเป็นยอดยืนยัน ไม่มี payment collection หรือการเทียบใบแจ้งหนี้
-- โมเดลสำรองลองได้หนึ่งโมเดลที่ได้รับอนุญาตก่อนเริ่มส่งข้อความ ไม่มี full circuit breaker หรือ latency-based router
-- การหยุดแชท/งานสื่อไม่รับประกันการหยุดคิดค่าบริการจาก provider งานบางชนิดอาจเสร็จที่ upstream แล้ว
-- สำรองฐานข้อมูลและไฟล์แบบเข้ารหัสทุก 24 ชั่วโมง เก็บ 7 ชุดใน Docker volume บนเครื่องเดียวกัน ต้องดาวน์โหลด/คัดลอกออกนอกเครื่องและเก็บคีย์แยกเพื่อรับมือเครื่องเสีย ยังไม่มี offsite replication หรือกำหนดเวลา/retention ผ่านหน้าเว็บ
-- กู้คืนทดสอบแล้วในฐาน PostgreSQL และพื้นที่ไฟล์แยก ไม่ได้กู้คืนทับฐานที่ผู้ใช้กำลังใช้งาน ดัชนี Qdrant สร้างใหม่หลัง live restore
-- งาน ingestion มี lease/recovery และจำกัดการลองซ้ำ งานสื่อที่ไม่ทราบว่าผู้ให้บริการรับคำสั่งแล้วหรือยังต้องให้ผู้ดูแลตรวจและยืนยัน ไม่สามารถรับประกัน exactly-once ที่ผู้ให้บริการไม่รองรับ idempotency
-- PDF มีไฮไลต์บนต้นฉบับสำหรับหน้าที่มีชั้นข้อความ หน้า PDF สแกนแสดงต้นฉบับและข้อความ OCR แยกแท็บ ยังไม่มี OCR bounding-box overlay
-- การแจ้งเตือนอยู่ภายในระบบ หากฐานข้อมูล/API หรือเครื่องทั้งหมดล่มจะเปิดดูแจ้งเตือนไม่ได้ ต้องมี external monitoring เพิ่มสำหรับ production
-- การค้นหาโหลด chunk ที่ได้รับอนุญาตใน memory เพื่อคำนวณ BM25 ต้องปรับสำหรับ corpus ขนาดใหญ่
-- อ้างอิงเชื่อมกับหน้า/เวอร์ชันที่จัดเก็บจริง แต่ยังไม่ได้พิสูจน์ความถูกต้องของทุกข้อกล่าวอ้างจากโมเดลจริง
-- Session sign-in rate limit เป็น process-local; production ต้องใช้ distributed controls, CSP, secret manager และ network segmentation
-- ยังไม่มี HA, infrastructure resource monitoring, OpenTelemetry, Ragas/DeepEval หรือ evaluation dashboard
-- Initial migration อ้างถึง metadata ปัจจุบัน ต้อง freeze definitions ก่อนใช้ schema history ใน Production ระยะยาว
+- Per-user, per-department, per-group and per-document ACLs are enforced in the API, and PostgreSQL row-level security isolates rows by `tenant_id` (users and department admins). The platform serves a single organisation. Super Admin and background jobs bypass the policy, and RLS does not separate users or departments inside the organisation (the API ACLs do that).
+- Docker scans uploads with ClamAV before reading or storing a file and stops accepting files when the scanner is down. There is no parser sandbox isolation and no DLP.
+- LLM streaming and fallback, embeddings, reranker and all four media categories have adapters, but there were no paid provider credentials to test them for real. Several providers are supported (Google AI, OpenRouter, LiteLLM), each with its own API key; none was tested with a real key, and there is no RPM/RPD limiter on our side (a fallback model is used on HTTP 429).
+- Budgets use reported tokens and administrator-defined prices, plus any media price the upstream reports. Unknown media cost is not counted as confirmed spend. There is no payment collection and no invoice reconciliation.
+- A fallback model tries one permitted model before any text is sent. There is no full circuit breaker and no latency-based router.
+- Stopping a chat or media job does not guarantee that the provider stops charging; some jobs may already be finished upstream.
+- Encrypted database and file backups run every 24 hours and keep 7 sets in a Docker volume on the same machine. Copy them off the machine and keep the key separately to survive a machine failure. There is no offsite replication and no schedule or retention setting in the web UI.
+- Restore was rehearsed into a separate PostgreSQL database and storage prefix. The Qdrant index is rebuilt after a live restore.
+- Ingestion jobs have leases, recovery and bounded retries. A media job whose provider state is unknown needs an administrator to check and confirm; exactly-once cannot be guaranteed where the provider has no idempotency.
+- PDFs are highlighted on the original for pages with a text layer. Scanned PDF pages show the original and the OCR text in separate tabs; there is no OCR bounding-box overlay.
+- Alerts live inside the system. If the database, the API or the whole machine is down, alerts cannot be viewed, so production needs external monitoring.
+- Search loads the permitted chunks into memory to compute BM25; this needs tuning for a large corpus.
+- Citations link to the stored page and version, but the correctness of every claim has not been proven with a real model.
+- The sign-in rate limit is process-local; production needs distributed controls, a CSP, a secret manager and network segmentation.
+- No HA, infrastructure resource monitoring, OpenTelemetry, Ragas/DeepEval or evaluation dashboard.
+- The initial migration refers to the current metadata; freeze its definitions before relying on the schema history in long-lived production.
 
-ข้อมูลพัฒนายังคงอยู่ใน Docker named volumes และบริการเว็บผูก loopback ที่พอร์ต 3009 โดยไม่ได้เผยแพร่สู่สาธารณะ
-- มี 3 บทบาท: Super Admin (ทั้งระบบ), ผู้ดูแลแผนก (DEPARTMENT_ADMIN) และผู้ใช้ (USER) ผู้ดูแลแผนกเห็นและจัดการได้ตาม ACL/กลุ่มที่ตนเป็นสมาชิก และแก้สมาชิกได้เฉพาะแผนก/กลุ่มของตน ยังไม่มีการผูกคลังความรู้กับแผนกแบบเจ้าของโดยตรง และ KB ที่เปิดให้ทั้งองค์กรยังเขียนได้ทุกบทบาท ไม่มีบทบาทอ่านอย่างเดียว
-- โหมดทดสอบแบบระบบจริง (`DEMO_MODE=false`, ไม่ตั้ง `APP_ENV=production`): ไม่มีปุ่มเข้าสู่ระบบโดยไม่ใช้รหัสผ่าน ไม่ seed ข้อมูลตัวอย่าง และ `extractive-demo` ถูกปิด รหัสผ่านบัญชีทดสอบ 3 บัญชีอยู่ที่ `/data/test-accounts.txt` ใน API container การใช้งานจริงต้องใช้ `compose.prod.yaml` ที่ต้องมี HTTPS และ SSO
+Development data stays in Docker named volumes, and the web service binds to loopback on port 3009 (`WEB_BIND` changes the address) without being published to the internet.
+
+- There are three roles: Super Admin (whole system), department admin (`DEPARTMENT_ADMIN`) and user (`USER`). A department admin sees and manages what the ACLs and groups they belong to allow, and edits members only in their own departments or groups. Knowledge bases are not owned by a department directly, a knowledge base open to the whole organisation is writable by every role, and there is no read-only role.
+- Production-like test mode (`DEMO_MODE=false`, `APP_ENV` not `production`): no passwordless sign-in button, no sample data, and `extractive-demo` is disabled. The three test account passwords are in `/data/test-accounts.txt` inside the API container. Real use needs `compose.prod.yaml`, which requires HTTPS and SSO.

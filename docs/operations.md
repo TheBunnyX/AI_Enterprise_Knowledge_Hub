@@ -1,40 +1,42 @@
-# การสำรองข้อมูล สิทธิ์ และงานประมวลผล
+# Backups, permissions and background work
 
-## ชุดสำรอง
+## Backups
 
-Super Admin → สำรองและกู้คืน แสดงสถานะบริการ งาน และชุดสำรอง กด “สำรองตอนนี้” เพื่อสร้างชุดใหม่ หรือดาวน์โหลด `.akh` ที่เข้ารหัส AES-256-GCM
+Super Admin → Backup and restore shows service status, jobs and backups. Press "Back up now" to create a set, or download the `.akh` file, which is encrypted with AES-256-GCM.
 
-ค่าเริ่มต้นสำรองทุก 24 ชั่วโมงและเก็บ 7 ชุด กำหนดด้วย `BACKUP_INTERVAL_HOURS` / `BACKUP_RETENTION` ใน Compose environment ใช้ `BACKUP_ENCRYPTION_KEY` หรือ fallback `SECRETS_KEY` ต้องเก็บคีย์เดิมและไฟล์ตั้งค่าแยกไว้อย่างปลอดภัย การหมุนคีย์จะทำให้ชุดเก่าเปิดไม่ได้หากไม่มีคีย์เก่า
+By default a backup runs every 24 hours and 7 sets are kept; change this with `BACKUP_INTERVAL_HOURS` / `BACKUP_RETENTION` in the Compose environment. The key is `BACKUP_ENCRYPTION_KEY`, falling back to `SECRETS_KEY`. Keep the original key and the configuration file safely and separately: rotating the key makes older sets unreadable without the old key.
 
-Backup ครอบคลุม PostgreSQL และไฟล์ใน S3 รวมเวอร์ชันเก่าและสื่อ ไม่รวม `.env`, TLS certificates หรือ Qdrant index ซึ่งสร้างใหม่จากเอกสารได้ Volume `backups-data` อยู่บนเครื่องเดียวกัน ต้องดาวน์โหลดหรือส่งสำเนาออกนอกเครื่องเพื่อรับมือเครื่องเสีย
+A backup covers PostgreSQL and the files in S3, including old versions and media. It does not include `.env`, TLS certificates or the Qdrant index, which is rebuilt from the documents. The `backups-data` volume lives on the same machine, so download or copy sets off the machine to survive a machine failure.
 
-ก่อนกู้คืน กด “ตรวจ / กู้คืน” ตรวจเวลาชุดสำรองและจำนวนไฟล์ พิมพ์ข้อความยืนยันของชุดนั้น ระบบหยุดการเขียนใหม่ รอไม่ให้มีงานหรือแชทกำลังทำงาน สร้าง safety snapshot แล้วจึงกู้คืนด้วย transaction เดียว หากมีงานค้างอยู่จะปฏิเสธการกู้คืน งานสื่อจากชุดสำรองไม่ส่งคำสั่งสร้างใหม่อัตโนมัติ หลังจบตรวจสถานะและเข้าสู่ระบบใหม่
+Before restoring, press "Verify / restore", check the backup time and file count, and type that set's confirmation text. The system stops new writes, waits until no job or chat is running, takes a safety snapshot and then restores in one transaction. If any job is still running the restore is refused. Media jobs in the backup do not resubmit themselves; after it finishes, check the status and sign in again.
 
-ทดสอบกู้คืนแบบแยกโดย `docker compose exec -T api python -m hub.ops_integration_check` สร้างชุดสำรองปัจจุบัน กู้คืนลงฐาน PostgreSQL ชั่วคราวและ S3 prefix แยก ตรวจจำนวนเอกสาร/แฮชไฟล์ แล้วลบเฉพาะเป้าหมายทดสอบ ไม่แทนที่ฐานใช้งาน
+Rehearse a restore in isolation with `docker compose exec -T api python -m hub.ops_integration_check`. It creates a current backup, restores it into a temporary PostgreSQL database and a separate S3 prefix, checks the document count and file hashes, then deletes only the test targets. It does not replace the live database.
 
-## สิทธิ์และการแชร์
+## Permissions and sharing
 
-หน้าเอกสาร/คลังความรู้มีแผนก กลุ่ม และสมาชิก เลือกคลังหรือเอกสารเพื่อกำหนดอ่าน/เขียน เอกสารจำกัดสิทธิ์เพิ่มเติมจากคลัง ผู้รับต้องผ่านทั้งสองชั้น ผู้ดูแลและผู้จัดการความรู้เข้าถึงภายในองค์กรเพื่อบริหารได้เสมอ
+The Documents and Knowledge pages have departments, groups and members. Pick a knowledge base or a document to set read or write access. A restricted document adds to the knowledge base's restriction, so a recipient must pass both layers. Administrators and knowledge managers can always reach everything in the organisation to manage it.
 
-หน้าแชทเลือก “แชร์ภายในองค์กร” กำหนดผู้ใช้/กลุ่มและวันหมดอายุ 1–90 วัน การแชร์เป็นอ่านอย่างเดียวและไม่เพิ่มสิทธิ์เอกสาร เมื่อสิทธิ์เอกสารอ้างอิงถูกถอน จะไม่เปิดบทสนทนานั้นให้ผู้รับ
+In chat, choose "Share within the organisation", pick users or groups and an expiry of 1–90 days. A share is read-only and never adds document access. When access to a cited document is withdrawn, the conversation is no longer opened for the recipient.
 
-## ตรวจไวรัสและกู้คืนงาน
+## Antivirus and job recovery
 
-ClamAV ตรวจไฟล์ก่อน parser/OCR/การจัดเก็บ หากบริการล่มจะปิดรับไฟล์ ต้องให้ ClamAV ดาวน์โหลด signature และพร้อมก่อนอัปโหลด ปฏิเสธไฟล์อันตรายพร้อมแจ้งผู้ดูแล ไม่จัดเก็บไฟล์นั้น
+ClamAV checks a file before the parser, OCR or storage. If the service is down, uploads are refused, so ClamAV must have downloaded its signatures and be ready before uploading. A dangerous file is rejected, the administrator is notified and the file is not stored.
 
-ระบบตรวจ lease งานทุก 60 วินาทีและลอง ingestion ใหม่ได้ไม่เกิน 5 ครั้ง งานสื่อที่สถานะไม่ชัดเจนจะขึ้น “ต้องตรวจสอบ” ต้องตรวจผลที่ผู้ให้บริการก่อนกดลองใหม่ เพราะอาจเกิดค่าบริการใหม่ วิดีโอที่มี provider job ID จะตรวจสถานะเดิมต่อ
+The system checks job leases every 60 seconds and retries ingestion at most 5 times. A media job whose state is unclear shows "Needs review". Check the result at the provider before retrying, because a retry may be billed again. A video with a provider job ID resumes checking that same job.
 
-กระดิ่งแสดงแจ้งเตือนตามสิทธิ์ พร้อมสถานะกลับมาปกติ ไม่ใช่ external monitoring: เมื่อฐานข้อมูล/API หรือทั้งเครื่องล่มจะเปิดหน้าแจ้งเตือนไม่ได้
+The bell shows alerts according to permission, with a recovery notice. It is not external monitoring: if the database, the API or the whole machine is down, the alerts page cannot be opened.
 
-PDF ต้นฉบับเปิดจากเอกสารหรืออ้างอิงในแชท ไฮไลต์ text layer ได้ หน้า scan ที่ไม่มี text layer แสดงต้นฉบับพร้อม OCR ในแท็บข้อความ ยังไม่มีไฮไลต์ตำแหน่ง OCR บนภาพ
+The original PDF opens from a document or a chat citation. A text layer can be highlighted; a scanned page with no text layer shows the original with the OCR in the text tab. OCR positions are not highlighted on the image.
 
 ## Deploy from GitHub with only env vars (Dokploy)
 
 1. On the source machine: Admin → Backups → create a backup and download the `.akh` file. Host it at a private HTTPS URL
-   (e.g. a private GitHub release asset or object storage with a token).
-2. In Dokploy create a Compose app from the GitHub repo, files `compose.yaml` + `compose.prod.yaml`, and set env vars only:
-   `POSTGRES_PASSWORD`, `SECRETS_KEY` (both identical to the source), `WEB_ORIGIN=https://ai.mongkhonhatit.com`,
-   `WEB_BIND=192.168.1.12`, `SEED_BACKUP_URL`, `SEED_BACKUP_TOKEN` (optional), plus the provider keys from `.env`.
+   (for example a private GitHub release asset or object storage with a token).
+2. In Dokploy create a Compose service from the GitHub repo with Compose path `./compose.dokploy.yaml` (it includes `compose.yaml` and `compose.prod.yaml`), and set env vars only:
+   `POSTGRES_PASSWORD`, `SECRETS_KEY` (both identical to the source), `WEB_ORIGIN=https://<your-domain>`,
+   `WEB_BIND=<address the tunnel reaches>`, `SEED_BACKUP_URL`, `SEED_BACKUP_TOKEN` (optional), plus the provider keys from `.env`.
 3. Deploy. On first start the API restores the snapshot into the empty database, rebuilds the search index, and writes
    `/data/.seed-restored` so it never runs again. Existing data is never overwritten.
 4. Change the demo account passwords afterwards (`DEMO_ACCOUNTS` stays empty in production).
+
+`POSTGRES_PASSWORD`, `SECRETS_KEY` and `BACKUP_ENCRYPTION_KEY` must not change after the data is restored, because the database roles and the encrypted provider keys depend on them.

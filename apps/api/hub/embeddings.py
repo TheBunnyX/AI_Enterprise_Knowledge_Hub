@@ -16,6 +16,30 @@ def specification():
     fingerprint=hashlib.sha256((model+':'+str(dimensions)+':'+os.getenv('EMBEDDING_VERSION','1')).encode()).hexdigest()[:20]
     return {'model':model,'dimensions':dimensions,'version':'gateway-'+fingerprint,'collection':'hub_embedding_'+fingerprint}
 
+QUERY_CACHE_SECONDS=int(os.getenv('QUERY_EMBED_CACHE_SECONDS','86400'))  # 0 = do not cache question embeddings
+
+def _cached_queries(texts,spec,onnx_embed):
+    """Question embeddings of the local model are kept in Redis (keyed by a hash of the text), so a repeated question skips the model. Best effort."""
+    import json
+    keys=['qemb:'+spec['version']+':'+hashlib.sha256(t.encode()).hexdigest() for t in texts]
+    found={}
+    try:
+        from .jobs import redis_client
+        r=redis_client()
+        found={i:json.loads(v) for i,v in enumerate(r.mget(keys)) if v}
+    except Exception:r=None
+    missing=[i for i in range(len(texts)) if i not in found]
+    if missing:
+        fresh=onnx_embed.embed([texts[i] for i in missing],'query')
+        for i,v in zip(missing,fresh):found[i]=v
+        if r is not None:
+            try:
+                pipe=r.pipeline()
+                for i,v in zip(missing,fresh):pipe.set(keys[i],json.dumps(v),ex=QUERY_CACHE_SECONDS)
+                pipe.execute()
+            except Exception:pass
+    return [found[i] for i in range(len(texts))]
+
 def batch(texts,tenant='',kind='passage'):
     """kind='query' for search questions, 'passage' for document chunks (only the local E5 model cares)."""
     spec=specification()
@@ -24,6 +48,7 @@ def batch(texts,tenant='',kind='passage'):
         return [embed(t) for t in texts]
     if spec['model']==LOCAL_E5:
         from . import onnx_embed
+        if kind=='query' and QUERY_CACHE_SECONDS>0 and os.getenv('CELERY_BROKER_URL'):return _cached_queries(texts,spec,onnx_embed)
         return onnx_embed.embed(texts,kind)
     from . import savings
     keys=[savings.embedding_key(spec['version'],tenant,t) for t in texts]
@@ -65,7 +90,11 @@ def rerank(query,results,floor=None):
         scores=onnx_rerank.score(query,[x['snippet'] for x in results])
         ranked=[r|{'rerank_score':round(s,5)} for r,s in sorted(zip(results,scores),key=lambda p:p[1],reverse=True)]
         if floor is None:floor=float(os.getenv('RERANK_MIN_SCORE','0'))
-        return [r for r in ranked if r['rerank_score']>=floor] if floor>0 else ranked
+        ranked=[r for r in ranked if r['rerank_score']>=floor] if floor>0 else ranked
+        if floor>0:  # a question whose best passage is still weak gets no evidence at all (RERANK_TOP_MIN, 0 = off)
+            top=float(os.getenv('RERANK_TOP_MIN','0'))
+            if top>0 and ranked and ranked[0]['rerank_score']<top:return []
+        return ranked
     url,key=gateway.configuration()
     with httpx.Client(timeout=30) as client:
         r=client.post(url+'/rerank',headers=gateway.headers(key),json={'model':model,'query':query,'documents':[x['snippet'] for x in results],'top_n':len(results)});r.raise_for_status()
