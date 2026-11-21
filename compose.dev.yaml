@@ -4,6 +4,8 @@
 services:
   postgres:
     ports: ['127.0.0.1:5432:5432']
+  llm-local:
+    ports: ['127.0.0.1:8202:8080']  # only for trying the local model by hand; the API reaches it over the Compose network
   # `make dev` (docker compose watch): rebuild the image and restart the service whenever its source changes.
   web:
     develop:

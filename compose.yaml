@@ -109,7 +109,7 @@ services:
       dockerfile: infrastructure/docker/api.Dockerfile
     environment: *api-env
     volumes: [api-data:/data, backups-data:/backups]
-    ports: ['127.0.0.1:8100:8000']
+    ports: ['127.0.0.1:${API_PORT:-8100}:8000']  # loopback only; set API_PORT when 8100 is taken on the host
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
@@ -170,7 +170,6 @@ services:
       LLM_LOCAL_CONTEXT: ${LLM_LOCAL_CONTEXT:-8192}
       LLM_LOCAL_IDLE_SECONDS: ${LLM_LOCAL_IDLE_SECONDS:-300}  # the model leaves RAM after this many idle seconds and loads again on the next request; 0 = keep loaded
     volumes: [gguf:/models]
-    ports: ['127.0.0.1:8202:8080']
     healthcheck:
       test: ['CMD','curl','-fs','http://127.0.0.1:8080/health']
       interval: 20s
